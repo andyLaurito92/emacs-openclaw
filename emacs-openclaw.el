@@ -15,6 +15,8 @@
 ;;; Code:
 
 (require 'request)
+(require 'cl-lib)
+(require 'json)
 
 ;; ============================================================================
 ;; Customization Variables
@@ -31,8 +33,7 @@
   :group 'emacs-openclaw)
 
 (defcustom emacs-openclaw-token ""
-  "OpenClaw authentication token.
-You can get this from your OpenClaw gateway."
+  "OpenClaw authentication token."
   :type 'string
   :group 'emacs-openclaw)
 
@@ -47,10 +48,13 @@ You can get this from your OpenClaw gateway."
   :group 'emacs-openclaw)
 
 ;; ============================================================================
-;; Internal Variables
+;; Keymap Definition
 ;; ============================================================================
 
-(defvar emacs-openclaw--mode-map nil
+(defvar emacs-openclaw-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") #'emacs-openclaw-send-line)
+    map)
   "Keymap for emacs-openclaw-mode.")
 
 ;; ============================================================================
@@ -59,13 +63,15 @@ You can get this from your OpenClaw gateway."
 
 (defun emacs-openclaw--log (msg &optional face)
   "Log MSG to the OpenClaw buffer with optional FACE."
-  (with-current-buffer (get-buffer-create emacs-openclaw-buffer-name)
-    (let ((inhibit-read-only t))
-      (save-excursion
-        (goto-char (point-max))
-        (insert (if face (propertize msg 'face face) msg)))
-      (let ((window (get-buffer-window)))
-        (when window (set-window-point window (point-max)))))))
+  (let ((buf (get-buffer-create emacs-openclaw-buffer-name)))
+    (with-current-buffer buf
+      (let ((inhibit-read-only t))
+        (save-excursion
+          (goto-char (point-max))
+          (insert (if face (propertize msg 'face face) msg)))
+        ;; Auto-scroll if the buffer is visible
+        (let ((window (get-buffer-window buf)))
+          (when window (set-window-point window (point-max))))))))
 
 (defun emacs-openclaw--send-request (prompt)
   "Send PROMPT to OpenClaw and log the response."
@@ -83,13 +89,15 @@ You can get this from your OpenClaw gateway."
     :success (cl-function 
               (lambda (&key data &allow-other-keys)
                 (let* ((choices (alist-get 'choices data))
-                       (choice (aref choices 0))
-                       (message (alist-get 'message choice))
-                       (content (alist-get 'content message)))
-                  (emacs-openclaw--log (format "OpenClaw: %s\n" content) 'font-lock-keyword-face))))
+                       (choice (and choices (aref choices 0)))
+                       (message (and choice (alist-get 'message choice)))
+                       (content (and message (alist-get 'content message))))
+                  (if content
+                      (emacs-openclaw--log (format "OpenClaw: %s\n" content) 'font-lock-keyword-face)
+                    (emacs-openclaw--log "[Error]: Unexpected API response structure." 'error)))))
     :error (cl-function 
             (lambda (&key error-thrown &allow-other-keys)
-              (emacs-openclaw--log (format "[Error]: %s\n" error-thrown) 'error)))))
+              (emacs-openclaw--log (format "[Error]: %s\n" (or error-thrown "Unknown error")) 'error)))))
 
 ;; ============================================================================
 ;; Interactive Commands
@@ -131,28 +139,9 @@ You can get this from your OpenClaw gateway."
 ;;;###autoload
 (define-minor-mode emacs-openclaw-mode
   "Minor mode for chatting with OpenClaw.
-
 When enabled, RET sends the current line to OpenClaw."
   :lighter " Claw"
-  :keymap (let ((map (make-sparse-keymap)))
-            (define-key map (kbd "RET") #'emacs-openclaw-send-line)
-            map))
-
-;; Evil mode integration
-(with-eval-after-load 'evil
-  (evil-define-key 'insert emacs-openclaw-mode-map (kbd "RET") #'emacs-openclaw-send-line)
-  (evil-define-key 'normal emacs-openclaw-mode-map (kbd "RET") #'emacs-openclaw-send-line))
-
-;; ============================================================================
-;; Keybindings
-;; ============================================================================
-
-(global-set-key (kbd "C-c C-w s") #'emacs-openclaw-chat)
-(global-set-key (kbd "C-c C-w r") #'emacs-openclaw-send-region-or-buffer)
-
-;; ============================================================================
-;; Module Export
-;; ============================================================================
+  :keymap emacs-openclaw-mode-map)
 
 (provide 'emacs-openclaw)
 
