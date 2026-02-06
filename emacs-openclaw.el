@@ -27,7 +27,7 @@
 Returns a plist with :token and :port, or nil if file not found."
   (let ((config-file (expand-file-name "~/.openclaw/openclaw.json")))
     (when (file-exists-p config-file)
-      (condition-case nil
+      (condition-case err
           (let* ((json-object-type 'plist)
                  (json-array-type 'list)
                  (config (json-read-file config-file))
@@ -37,7 +37,9 @@ Returns a plist with :token and :port, or nil if file not found."
                  (port (plist-get gateway :port)))
             (when (and token port)
               (list :token token :port port)))
-        (error nil)))))
+        (error 
+         (message "emacs-openclaw: Failed to load config from %s: %s" config-file err)
+         nil)))))
 
 ;; ============================================================================
 ;; Customization Variables
@@ -98,8 +100,12 @@ Returns a plist with :token and :port."
   (unless emacs-openclaw--token-cache
     (let ((config (emacs-openclaw--load-config)))
       (if config
-          (setq emacs-openclaw--token-cache (plist-get config :token)
-                emacs-openclaw--port-cache (plist-get config :port))
+          (progn
+            (setq emacs-openclaw--token-cache (plist-get config :token)
+                  emacs-openclaw--port-cache (plist-get config :port))
+            (message "emacs-openclaw: Loaded config from ~/.openclaw/openclaw.json (port: %s)" 
+                     emacs-openclaw--port-cache))
+        (message "emacs-openclaw: Config file not found at ~/.openclaw/openclaw.json or missing required fields (:token or :port)")
         (setq emacs-openclaw--token-cache :not-found))))
   
   ;; Use explicit settings if provided, otherwise use cached values
