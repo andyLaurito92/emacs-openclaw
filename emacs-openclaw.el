@@ -230,6 +230,7 @@ Returns the server directory path, or nil if not found."
         (message "Starting OpenClaw server on port %d..." emacs-openclaw-server-port)
         
         ;; Wait and poll for server to start (with retries)
+        ;; Note: Health checks are synchronous but brief (5s timeout)
         (let ((max-attempts 10)
               (attempt 0)
               (delay 0.5))
@@ -281,10 +282,10 @@ Returns the server directory path, or nil if not found."
                   (lambda (&key data &allow-other-keys)
                     (let ((tools (alist-get 'tools data)))
                       ;; Save tools configuration persistently
-                      ;; Note: Keep as alist/vector format from JSON
+                      ;; Convert JSON array (vector) to list for proper serialization with json-encode
                       (emacs-openclaw--save-tools-config 
                        (list :server-port emacs-openclaw-server-port
-                             :tools (append tools nil)  ; Convert vector to list
+                             :tools (append tools nil)  ; Ensure proper list format for json-encode
                              :last-updated (format-time-string "%Y-%m-%d %H:%M:%S")))
                       (message "Available OpenClaw tools: %d found (saved to config)" (length tools))
                       (with-current-buffer (get-buffer-create "*OpenClaw-Tools*")
