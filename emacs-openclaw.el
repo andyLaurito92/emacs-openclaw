@@ -272,7 +272,7 @@ Returns the server directory path, or nil if not found."
           (if (emacs-openclaw--server-running-p)
               (message "OpenClaw server started successfully on port %d" emacs-openclaw-server-port)
             (message "Server may still be starting... Check %s buffer for details. Use M-x emacs-openclaw-show-server-buffer" 
-                     emacs-openclaw--server-buffer))))))
+                     emacs-openclaw--server-buffer)))))))
 
 ;;;###autoload
 (defun emacs-openclaw--stop-server ()
