@@ -101,10 +101,10 @@ If nil, uses HTTP requests directly."
   "Cached port (loaded from config file).")
 
 (defvar emacs-openclaw--websocket nil
-  "Active WebSocket connection to OpenClaw gateway.")
+  "Active WebSocket connection to OpenClaw gateway, or nil if not connected.")
 
-(defvar emacs-openclaw--response-buffer ""
-  "Buffer for accumulating WebSocket response chunks.")
+(defvar emacs-openclaw--response-accumulator ""
+  "String accumulator for WebSocket response chunks.")
 
 (defvar emacs-openclaw--response-in-progress nil
   "Flag indicating whether a response is currently being received.")
@@ -196,13 +196,13 @@ Returns a plist with :token and :port."
          ;; Accumulate streaming content
          ((and content (stringp content))
           (setq emacs-openclaw--response-in-progress t)
-          (setq emacs-openclaw--response-buffer
-                (concat emacs-openclaw--response-buffer content))
+          (setq emacs-openclaw--response-accumulator
+                (concat emacs-openclaw--response-accumulator content))
           (emacs-openclaw--log content 'font-lock-keyword-face))
          ;; Handle stream completion
          ((and finish-reason (string= finish-reason "stop"))
           (emacs-openclaw--log "\n")
-          (setq emacs-openclaw--response-buffer "")
+          (setq emacs-openclaw--response-accumulator "")
           (setq emacs-openclaw--response-in-progress nil)))))))
 
 (defun emacs-openclaw--websocket-on-close (websocket)
@@ -244,19 +244,27 @@ Returns a plist with :token and :port."
 
 (defun emacs-openclaw--send-via-websocket (prompt)
   "Send PROMPT via WebSocket to OpenClaw."
-  (when emacs-openclaw--response-in-progress
-    (message "Previous response still in progress, please wait...")
-    (emacs-openclaw--log "[Warning: Previous response still in progress]\n" 'warning))
-  (let ((ws (emacs-openclaw--ensure-websocket)))
-    (if ws
-        (let ((payload (json-encode `((model . ,emacs-openclaw-model)
-                                      (messages . [((role . "user") (content . ,prompt))])
-                                      (stream . t)))))
-          (setq emacs-openclaw--response-buffer "")
-          (setq emacs-openclaw--response-in-progress t)
-          (websocket-send-text ws payload))
-      ;; Fallback to HTTP if WebSocket fails
-      (emacs-openclaw--send-via-http prompt))))
+  (if emacs-openclaw--response-in-progress
+      (progn
+        (message "Previous response still in progress, please wait...")
+        (emacs-openclaw--log "[Warning: Previous response still in progress - request blocked]\n" 'warning))
+    (let ((ws (emacs-openclaw--ensure-websocket)))
+      (if ws
+          (let ((payload (json-encode `((model . ,emacs-openclaw-model)
+                                        (messages . [((role . "user") (content . ,prompt))])
+                                        (stream . t)))))
+            (setq emacs-openclaw--response-accumulator "")
+            (condition-case err
+                (progn
+                  (websocket-send-text ws payload)
+                  ;; Only set flag if send succeeds
+                  (setq emacs-openclaw--response-in-progress t))
+              (error
+               (emacs-openclaw--log (format "[WebSocket Send Error]: %s\n" err) 'error)
+               (message "Failed to send via WebSocket, trying HTTP fallback...")
+               (emacs-openclaw--send-via-http prompt))))
+        ;; Fallback to HTTP if WebSocket connection fails
+        (emacs-openclaw--send-via-http prompt)))))
 
 ;; ============================================================================
 ;; HTTP Functions
