@@ -42,6 +42,20 @@ Returns a plist with :token and :port, or nil if file not found."
          nil)))))
 
 ;; ============================================================================
+;; Custom Faces
+;; ============================================================================
+
+(defface emacs-openclaw-user-face
+  '((t :foreground "green" :weight bold))
+  "Face for user input in OpenClaw chat."
+  :group 'emacs-openclaw)
+
+(defface emacs-openclaw-response-face
+  '((t :foreground "cyan" :weight normal))
+  "Face for OpenClaw responses in chat."
+  :group 'emacs-openclaw)
+
+;; ============================================================================
 ;; Customization Variables
 ;; ============================================================================
 
@@ -73,6 +87,11 @@ Default fallback is 18789."
 
 (defcustom emacs-openclaw-session-key "emacs-session"
   "Session key for OpenClaw requests."
+  :type 'string
+  :group 'emacs-openclaw)
+
+(defcustom emacs-openclaw-message-separator "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  "Visual separator between messages in the chat buffer."
   :type 'string
   :group 'emacs-openclaw)
 
@@ -150,7 +169,11 @@ Returns a plist with :token and :port."
 
 (defun emacs-openclaw--send-request (prompt)
   "Send PROMPT to OpenClaw and log the response."
-  (emacs-openclaw--log (format "\nYou: %s\n" prompt) 'font-lock-comment-face)
+  (emacs-openclaw--log "\n" nil)
+  (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow)
+  (emacs-openclaw--log "You: " 'emacs-openclaw-user-face)
+  (emacs-openclaw--log (format "%s\n" prompt) nil)
+  (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow)
   (let ((token (emacs-openclaw--get-token))
         (base-url (emacs-openclaw--get-base-url)))
     (request
@@ -169,10 +192,12 @@ Returns a plist with :token and :port."
                          (choice (aref choices 0))
                          (message (alist-get 'message choice))
                          (content (alist-get 'content message)))
-                    (emacs-openclaw--log (format "OpenClaw: %s\n" content) 'font-lock-keyword-face))))
+                    (emacs-openclaw--log "\n" nil)
+                    (emacs-openclaw--log "OpenClaw: " 'emacs-openclaw-response-face)
+                    (emacs-openclaw--log (format "%s\n" content) nil))))
       :error (cl-function 
               (lambda (&key error-thrown &allow-other-keys)
-                (emacs-openclaw--log (format "[Error]: %s\n" error-thrown) 'error))))))
+                (emacs-openclaw--log (format "\n[Error]: %s\n" error-thrown) 'error))))))
 
 ;; ============================================================================
 ;; Interactive Commands
