@@ -41,6 +41,9 @@ Add to your `init.el`:
   ;; Set to nil to use HTTP instead:
   ;; (setq emacs-openclaw-use-websocket nil)
   
+  ;; Customize the model (default: "openclaw:main")
+  ;; (setq emacs-openclaw-model "openclaw:main")
+  
   ;; Evil mode keybindings (if you use Evil)
   (with-eval-after-load 'evil
     (evil-define-key 'insert emacs-openclaw-mode-map (kbd "RET") #'emacs-openclaw-send-line)

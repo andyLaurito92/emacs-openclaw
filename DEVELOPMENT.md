@@ -145,7 +145,7 @@ git commit -m "feat(server): Add delete_email function"
 - [ ] Move Emacs code to `emacs-openclaw.el` once stable
 - [ ] Add email composition UI
 - [ ] Add calendar event creation UI
-- [ ] Implement streaming responses
+- [x] Implement streaming responses (WebSocket-based)
 - [ ] Unit tests for server
 - [ ] MELPA publication workflow
 

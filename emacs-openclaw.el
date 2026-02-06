@@ -77,9 +77,14 @@ Default fallback is 18789."
 
 (defcustom emacs-openclaw-use-websocket t
   "Whether to use WebSocket for communication with OpenClaw.
-If t, uses WebSocket for streaming responses.
-If nil, falls back to HTTP requests."
+If t, attempts WebSocket connection with automatic HTTP fallback on failure.
+If nil, uses HTTP requests directly."
   :type 'boolean
+  :group 'emacs-openclaw)
+
+(defcustom emacs-openclaw-model "openclaw:main"
+  "The OpenClaw model to use for chat completions."
+  :type 'string
   :group 'emacs-openclaw)
 
 ;; ============================================================================
@@ -100,6 +105,9 @@ If nil, falls back to HTTP requests."
 
 (defvar emacs-openclaw--response-buffer ""
   "Buffer for accumulating WebSocket response chunks.")
+
+(defconst emacs-openclaw--api-endpoint "/v1/chat/completions"
+  "API endpoint path for chat completions.")
 
 ;; ============================================================================
 ;; Configuration Helpers
@@ -206,7 +214,7 @@ Returns a plist with :token and :port."
   "Ensure a WebSocket connection is established and return it."
   (unless (and emacs-openclaw--websocket
                (websocket-openp emacs-openclaw--websocket))
-    (let* ((url (concat (emacs-openclaw--get-websocket-url) "/v1/chat/completions"))
+    (let* ((url (concat (emacs-openclaw--get-websocket-url) emacs-openclaw--api-endpoint))
            (token (emacs-openclaw--get-token))
            (headers `(("Authorization" . ,(format "Bearer %s" token))
                       ("x-openclaw-session-key" . ,emacs-openclaw-session-key))))
@@ -228,7 +236,7 @@ Returns a plist with :token and :port."
   "Send PROMPT via WebSocket to OpenClaw."
   (let ((ws (emacs-openclaw--ensure-websocket)))
     (if ws
-        (let ((payload (json-encode `((model . "openclaw:main")
+        (let ((payload (json-encode `((model . ,emacs-openclaw-model)
                                       (messages . [((role . "user") (content . ,prompt))])
                                       (stream . t)))))
           (setq emacs-openclaw--response-buffer "")
@@ -245,12 +253,12 @@ Returns a plist with :token and :port."
   (let ((token (emacs-openclaw--get-token))
         (base-url (emacs-openclaw--get-base-url)))
     (request
-      (concat base-url "/v1/chat/completions")
+      (concat base-url emacs-openclaw--api-endpoint)
       :type "POST"
       :headers `(("Authorization" . ,(format "Bearer %s" token))
                  ("Content-Type" . "application/json")
                  ("x-openclaw-session-key" . ,emacs-openclaw-session-key))
-      :data (json-encode `((model . "openclaw:main")
+      :data (json-encode `((model . ,emacs-openclaw-model)
                            (messages . [((role . "user") (content . ,prompt))])
                            (stream . :json-false)))
       :parser 'json-read

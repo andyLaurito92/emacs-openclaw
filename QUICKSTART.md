@@ -99,6 +99,18 @@ pip install -r requirements.txt
 - [ ] Try the email examples
 - [ ] Build a compose UI
 - [ ] Add calendar integration
-- [ ] Explore streaming responses
+- [x] Explore streaming responses (WebSocket support added!)
 
 See `DEVELOPMENT.md` for architecture and adding features.
+
+## WebSocket vs HTTP
+
+By default, emacs-openclaw now uses WebSocket for real-time streaming responses. You can configure this:
+
+```elisp
+;; Use WebSocket (default)
+(setq emacs-openclaw-use-websocket t)
+
+;; Or use HTTP
+(setq emacs-openclaw-use-websocket nil)
+```
