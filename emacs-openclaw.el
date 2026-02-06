@@ -192,14 +192,16 @@ Returns the server directory path, or nil if not found."
 
 (defun emacs-openclaw--server-running-p ()
   "Check if the Gmail/Calendar tools server is running."
-  (condition-case nil
+  (condition-case err
       (with-current-buffer (url-retrieve-synchronously 
                             (format "http://127.0.0.1:%d/health" emacs-openclaw-server-port)
                             t nil 5)
         (goto-char (point-min))
         (prog1 (search-forward "\"status\"" nil t)
           (kill-buffer)))
-    (error nil)))
+    (error 
+     (message "emacs-openclaw: Server health check failed: %s" (error-message-string err))
+     nil)))
 
 ;;;###autoload
 (defun emacs-openclaw--start-server ()
@@ -227,13 +229,20 @@ Returns the server directory path, or nil if not found."
         
         (message "Starting OpenClaw server on port %d..." emacs-openclaw-server-port)
         
-        ;; Wait a moment for server to start
-        (sit-for 2)
-        
-        ;; Check if it started successfully
-        (if (emacs-openclaw--server-running-p)
-            (message "OpenClaw server started successfully on port %d" emacs-openclaw-server-port)
-          (message "Server may still be starting... Check %s buffer for details" emacs-openclaw--server-buffer))))))
+        ;; Wait and poll for server to start (with retries)
+        (let ((max-attempts 10)
+              (attempt 0)
+              (delay 0.5))
+          (while (and (< attempt max-attempts)
+                      (not (emacs-openclaw--server-running-p)))
+            (setq attempt (1+ attempt))
+            (sit-for delay)
+            (setq delay (min 2.0 (* delay 1.5))))  ; Exponential backoff, max 2s
+          
+          (if (emacs-openclaw--server-running-p)
+              (message "OpenClaw server started successfully on port %d" emacs-openclaw-server-port)
+            (message "Server may still be starting... Check %s buffer for details. Use M-x emacs-openclaw-show-server-buffer" 
+                     emacs-openclaw--server-buffer))))))
 
 ;;;###autoload
 (defun emacs-openclaw--stop-server ()
@@ -272,9 +281,10 @@ Returns the server directory path, or nil if not found."
                   (lambda (&key data &allow-other-keys)
                     (let ((tools (alist-get 'tools data)))
                       ;; Save tools configuration persistently
+                      ;; Note: Keep as alist/vector format from JSON
                       (emacs-openclaw--save-tools-config 
                        (list :server-port emacs-openclaw-server-port
-                             :tools tools
+                             :tools (append tools nil)  ; Convert vector to list
                              :last-updated (format-time-string "%Y-%m-%d %H:%M:%S")))
                       (message "Available OpenClaw tools: %d found (saved to config)" (length tools))
                       (with-current-buffer (get-buffer-create "*OpenClaw-Tools*")
@@ -290,7 +300,9 @@ Returns the server directory path, or nil if not found."
                         (pop-to-buffer (current-buffer))))))
         :error (cl-function
                 (lambda (&key error-thrown &allow-other-keys)
-                  (message "Failed to get tools: %s" error-thrown))))
+                  (message "Failed to get tools from %s: %s\nIs the server running? Try M-x emacs-openclaw--start-server" 
+                           (format "http://127.0.0.1:%d/tools" emacs-openclaw-server-port)
+                           error-thrown))))
     (message "Server is not running. Start it with M-x emacs-openclaw--start-server")))
 
 ;; ============================================================================
