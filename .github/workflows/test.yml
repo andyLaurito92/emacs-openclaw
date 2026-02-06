@@ -22,9 +22,11 @@ jobs:
           emacs -Q --batch --eval "(progn
             (require 'package)
             (add-to-list 'package-archives '(\"melpa\" . \"https://melpa.org/packages/\") t)
+            (add-to-list 'package-archives '(\"gnu\" . \"https://elpa.gnu.org/packages/\") t)
             (package-initialize)
             (package-refresh-contents)
             (package-install 'request)
+            (package-install 'websocket)
             (package-install 'deferred))"
 
       - name: Elisp Syntax Checker
