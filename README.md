@@ -27,18 +27,19 @@ Add to your `init.el`:
 
 ```elisp
 (use-package emacs-openclaw
-  :straight (:host github :repo "andyLaurito92/emacs-openclaw")
-  :config
-  (setq emacs-openclaw-token "your-openclaw-token-here")
-  (setq emacs-openclaw-base-url "http://127.0.0.1:18789"))
+  :straight (:host github :repo "andyLaurito92/emacs-openclaw"))
 ```
 
-Or manually load the package:
+That's it! The package will auto-detect your OpenClaw token and port from `~/.openclaw/openclaw.json`.
+
+**Override if needed:**
 
 ```elisp
-(add-to-list 'load-path "~/repos/emacs-openclaw")
-(require 'emacs-openclaw)
-(setq emacs-openclaw-token "your-openclaw-token-here")
+(use-package emacs-openclaw
+  :straight (:host github :repo "andyLaurito92/emacs-openclaw")
+  :config
+  (setq emacs-openclaw-token "your-token")
+  (setq emacs-openclaw-port 18789))
 ```
 
 ### 3. Usage
