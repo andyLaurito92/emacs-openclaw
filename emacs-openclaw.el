@@ -215,18 +215,6 @@ When enabled, RET sends the current line to OpenClaw."
             (define-key map (kbd "RET") #'emacs-openclaw-send-line)
             map))
 
-;; Evil mode integration
-(with-eval-after-load 'evil
-  (evil-define-key 'insert emacs-openclaw-mode-map (kbd "RET") #'emacs-openclaw-send-line)
-  (evil-define-key 'normal emacs-openclaw-mode-map (kbd "RET") #'emacs-openclaw-send-line))
-
-;; ============================================================================
-;; Keybindings
-;; ============================================================================
-
-(global-set-key (kbd "C-c C-w s") #'emacs-openclaw-chat)
-(global-set-key (kbd "C-c C-w r") #'emacs-openclaw-send-region-or-buffer)
-
 ;; ============================================================================
 ;; Module Export
 ;; ============================================================================

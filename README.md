@@ -27,19 +27,19 @@ Add to your `init.el`:
 
 ```elisp
 (use-package emacs-openclaw
-  :straight (:host github :repo "andyLaurito92/emacs-openclaw"))
-```
-
-That's it! The package will auto-detect your OpenClaw token and port from `~/.openclaw/openclaw.json`.
-
-**Override if needed:**
-
-```elisp
-(use-package emacs-openclaw
   :straight (:host github :repo "andyLaurito92/emacs-openclaw")
+  :bind (("C-c C-w s" . emacs-openclaw-chat)
+         ("C-c C-w r" . emacs-openclaw-send-region-or-buffer))
   :config
-  (setq emacs-openclaw-token "your-token")
-  (setq emacs-openclaw-port 18789))
+  ;; Token and port are auto-detected from ~/.openclaw/openclaw.json
+  ;; Override if needed:
+  ;; (setq emacs-openclaw-token "your-token")
+  ;; (setq emacs-openclaw-port 18789)
+  
+  ;; Evil mode keybindings (if you use Evil)
+  (with-eval-after-load 'evil
+    (evil-define-key 'insert emacs-openclaw-mode-map (kbd "RET") #'emacs-openclaw-send-line)
+    (evil-define-key 'normal emacs-openclaw-mode-map (kbd "RET") #'emacs-openclaw-send-line)))
 ```
 
 ### 3. Usage
