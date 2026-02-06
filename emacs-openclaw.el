@@ -90,6 +90,11 @@ Default fallback is 18789."
   :type 'string
   :group 'emacs-openclaw)
 
+(defcustom emacs-openclaw-message-separator "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  "Visual separator between messages in the chat buffer."
+  :type 'string
+  :group 'emacs-openclaw)
+
 ;; ============================================================================
 ;; Internal Variables
 ;; ============================================================================
@@ -165,10 +170,10 @@ Returns a plist with :token and :port."
 (defun emacs-openclaw--send-request (prompt)
   "Send PROMPT to OpenClaw and log the response."
   (emacs-openclaw--log "\n" nil)
-  (emacs-openclaw--log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" 'shadow)
+  (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow)
   (emacs-openclaw--log "You: " 'emacs-openclaw-user-face)
   (emacs-openclaw--log (format "%s\n" prompt) nil)
-  (emacs-openclaw--log "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" 'shadow)
+  (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow)
   (let ((token (emacs-openclaw--get-token))
         (base-url (emacs-openclaw--get-base-url)))
     (request

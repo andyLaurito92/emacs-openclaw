@@ -19,21 +19,26 @@
 
 (require 'emacs-openclaw)
 
+;; Use a local constant for demo purposes (same as the customizable one)
+(defconst demo-faces--separator "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  "Separator line for demo messages.")
+
 (defun demo-faces/show-example ()
   "Create a demo buffer showing the improved chat appearance."
   (interactive)
-  (let ((buf (get-buffer-create "*OpenClaw-Demo*")))
+  (let ((buf (get-buffer-create "*OpenClaw-Demo*"))
+        (long-sep "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"))
     (with-current-buffer buf
       (erase-buffer)
-      (insert "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+      (insert long-sep "\n")
       (insert "  OpenClaw Chat - Improved UX Demo\n")
-      (insert "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n")
+      (insert long-sep "\n\n")
       
       ;; Example 1: User input
-      (insert (propertize "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" 'face 'shadow))
+      (insert (propertize (concat demo-faces--separator "\n") 'face 'shadow))
       (insert (propertize "You: " 'face 'emacs-openclaw-user-face))
       (insert "What is Emacs?\n")
-      (insert (propertize "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" 'face 'shadow))
+      (insert (propertize (concat demo-faces--separator "\n\n") 'face 'shadow))
       
       ;; Example 1: OpenClaw response
       (insert (propertize "OpenClaw: " 'face 'emacs-openclaw-response-face))
@@ -42,10 +47,10 @@
       (insert "ability to customize almost every aspect of its behavior.\n\n")
       
       ;; Example 2: User input
-      (insert (propertize "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" 'face 'shadow))
+      (insert (propertize (concat demo-faces--separator "\n") 'face 'shadow))
       (insert (propertize "You: " 'face 'emacs-openclaw-user-face))
       (insert "How do I learn Emacs Lisp?\n")
-      (insert (propertize "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" 'face 'shadow))
+      (insert (propertize (concat demo-faces--separator "\n\n") 'face 'shadow))
       
       ;; Example 2: OpenClaw response
       (insert (propertize "OpenClaw: " 'face 'emacs-openclaw-response-face))
@@ -53,10 +58,10 @@
       (insert "Practice by writing small functions and gradually build up\n")
       (insert "your understanding through real projects.\n\n")
       
-      (insert "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+      (insert long-sep "\n")
       (insert "Notice how user input (green, bold) is clearly distinct\n")
       (insert "from OpenClaw responses (cyan, normal weight).\n")
-      (insert "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+      (insert long-sep "\n")
       
       (goto-char (point-min))
       (view-mode 1))
