@@ -231,10 +231,10 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
                                              (platform . "emacs")
                                              (mode . "operator")))
                                    (role . "operator")
-                                   (scopes . ["operator.read" "operator.write"])
-                                   (caps . [])
-                                   (commands . [])
-                                   (permissions . ,(make-hash-table))
+                                   (scopes . ("operator.read" "operator.write"))
+                                   (caps . ())
+                                   (commands . ())
+                                   (permissions)
                                    (auth . ((token . ,token)))
                                    (locale . "en-US")
                                    (userAgent . "emacs-openclaw/0.1.0")))))))
@@ -282,8 +282,7 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
     (when delta
       ;; Handle different delta structures
       (let* ((choices (alist-get 'choices delta))
-             (choice (when (and choices (> (length choices) 0)) 
-                       (elt choices 0)))
+             (choice (when choices (car choices)))
              (choice-delta (when choice (alist-get 'delta choice)))
              (content (when choice-delta (alist-get 'content choice-delta))))
         (when content
@@ -306,12 +305,11 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
   (unless (and emacs-openclaw--websocket emacs-openclaw--websocket-connected)
     (emacs-openclaw--connect-websocket)
     ;; Wait for connection to complete (with timeout)
-    (let ((max-wait 10)
-          (wait-time 0))
-      (while (and (< wait-time max-wait) 
+    (let ((retries 50))  ; 50 * 0.2s = 10 seconds max
+      (while (and (> retries 0) 
                   (not emacs-openclaw--websocket-connected))
         (accept-process-output nil 0.2)
-        (setq wait-time (+ wait-time 0.2)))
+        (setq retries (1- retries)))
       (unless emacs-openclaw--websocket-connected
         (error "Failed to establish websocket connection to OpenClaw gateway")))))
 
@@ -355,7 +353,7 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
                `((type . "req")
                  (id . ,req-id)
                  (method . "chat.completions")
-                 (params . ((messages . [((role . "user") (content . ,prompt))])
+                 (params . ((messages . (((role . "user") (content . ,prompt))))
                            (model . "openclaw:main")
                            (stream . t)))))))
     
