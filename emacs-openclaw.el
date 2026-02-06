@@ -22,33 +22,6 @@
 ;; Configuration Loading
 ;; ============================================================================
 
-(defun emacs-openclaw--config-file ()
-  "Get the path to the OpenClaw tools config file."
-  (expand-file-name "~/.openclaw/tools-config.json"))
-
-(defun emacs-openclaw--save-tools-config (tools-info)
-  "Save TOOLS-INFO to persistent config file."
-  (let ((config-file (emacs-openclaw--config-file))
-        (config-dir (file-name-directory (emacs-openclaw--config-file))))
-    (unless (file-directory-p config-dir)
-      (make-directory config-dir t))
-    (with-temp-file config-file
-      (insert (json-encode tools-info)))
-    (message "Saved tools configuration to %s" config-file)))
-
-(defun emacs-openclaw--load-tools-config ()
-  "Load tools configuration from persistent storage.
-Returns the tools info plist, or nil if not found."
-  (let ((config-file (emacs-openclaw--config-file)))
-    (when (file-exists-p config-file)
-      (condition-case err
-          (let ((json-object-type 'plist)
-                (json-array-type 'list))
-            (json-read-file config-file))
-        (error
-         (message "emacs-openclaw: Failed to load tools config from %s: %s" config-file err)
-         nil)))))
-
 (defun emacs-openclaw--load-config ()
   "Load OpenClaw configuration from ~/.openclaw/openclaw.json.
 Returns a plist with :token and :port, or nil if file not found."
@@ -117,16 +90,6 @@ Default fallback is 18789."
   :type 'string
   :group 'emacs-openclaw)
 
-(defcustom emacs-openclaw-server-port 3333
-  "Port for the OpenClaw Gmail/Calendar tools server."
-  :type 'integer
-  :group 'emacs-openclaw)
-
-(defcustom emacs-openclaw-auto-start-server t
-  "Whether to automatically start the Gmail/Calendar tools server if not running."
-  :type 'boolean
-  :group 'emacs-openclaw)
-
 (defcustom emacs-openclaw-message-separator "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   "Visual separator between messages in the chat buffer."
   :type 'string
@@ -144,12 +107,6 @@ Default fallback is 18789."
 
 (defvar emacs-openclaw--port-cache nil
   "Cached port (loaded from config file).")
-
-(defvar emacs-openclaw--server-process nil
-  "Process object for the Gmail/Calendar tools server.")
-
-(defvar emacs-openclaw--server-buffer "*OpenClaw-Server*"
-  "Buffer name for server output.")
 
 ;; ============================================================================
 ;; Configuration Helpers
@@ -197,135 +154,6 @@ Returns a plist with :token and :port."
     (plist-get config :token)))
 
 ;; ============================================================================
-;; Server Management
-;; ============================================================================
-
-(defun emacs-openclaw--find-server-dir ()
-  "Find the directory containing the OpenClaw server.
-Returns the server directory path, or nil if not found."
-  (let* ((current-file (or load-file-name buffer-file-name))
-         (pkg-dir (when current-file (file-name-directory current-file)))
-         (server-dir (when pkg-dir (expand-file-name "server" pkg-dir))))
-    (when (and server-dir (file-directory-p server-dir))
-      server-dir)))
-
-(defun emacs-openclaw--server-running-p ()
-  "Check if the Gmail/Calendar tools server is running."
-  (condition-case err
-      (with-current-buffer (url-retrieve-synchronously 
-                            (format "http://127.0.0.1:%d/health" emacs-openclaw-server-port)
-                            t nil 5)
-        (goto-char (point-min))
-        (prog1 (search-forward "\"status\"" nil t)
-          (kill-buffer)))
-    (error 
-     (message "emacs-openclaw: Server health check failed: %s" (error-message-string err))
-     nil)))
-
-;;;###autoload
-(defun emacs-openclaw--start-server ()
-  "Start the Gmail/Calendar tools server."
-  (interactive)
-  (if (emacs-openclaw--server-running-p)
-      (message "OpenClaw server already running on port %d" emacs-openclaw-server-port)
-    (let ((server-dir (emacs-openclaw--find-server-dir)))
-      (unless server-dir
-        (error "Cannot find server directory. Please ensure emacs-openclaw is installed correctly"))
-      
-      (let ((default-directory server-dir))
-        ;; Check if client_secret.json exists
-        (unless (file-exists-p "client_secret.json")
-          (error "client_secret.json not found in %s. Please follow setup instructions in README-SERVER.md" server-dir))
-        
-        ;; Start the server process
-        (setq emacs-openclaw--server-process
-              (start-process
-               "openclaw-server"
-               (get-buffer-create emacs-openclaw--server-buffer)
-               "python3" "-m" "uvicorn" "server:app"
-               "--host" "127.0.0.1"
-               "--port" (number-to-string emacs-openclaw-server-port)))
-        
-        (message "Starting OpenClaw server on port %d..." emacs-openclaw-server-port)
-        
-        ;; Wait and poll for server to start (with retries)
-        ;; Note: Health checks are synchronous but brief (5s timeout)
-        (let ((max-attempts 10)
-              (attempt 0)
-              (delay 0.5))
-          (while (and (< attempt max-attempts)
-                      (not (emacs-openclaw--server-running-p)))
-            (setq attempt (1+ attempt))
-            (sit-for delay)
-            (setq delay (min 2.0 (* delay 1.5))))  ; Exponential backoff, max 2s
-          
-          (if (emacs-openclaw--server-running-p)
-              (message "OpenClaw server started successfully on port %d" emacs-openclaw-server-port)
-            (message "Server may still be starting... Check %s buffer for details. Use M-x emacs-openclaw-show-server-buffer" 
-                     emacs-openclaw--server-buffer))))))
-
-;;;###autoload
-(defun emacs-openclaw--stop-server ()
-  "Stop the Gmail/Calendar tools server."
-  (interactive)
-  (when (and emacs-openclaw--server-process
-             (process-live-p emacs-openclaw--server-process))
-    (kill-process emacs-openclaw--server-process)
-    (setq emacs-openclaw--server-process nil)
-    (message "OpenClaw server stopped")))
-
-(defun emacs-openclaw--ensure-server-running ()
-  "Ensure the server is running, starting it if necessary."
-  (when (and emacs-openclaw-auto-start-server
-             (not (emacs-openclaw--server-running-p)))
-    (emacs-openclaw--start-server)))
-
-;;;###autoload
-(defun emacs-openclaw-show-server-buffer ()
-  "Show the server output buffer."
-  (interactive)
-  (if (get-buffer emacs-openclaw--server-buffer)
-      (pop-to-buffer emacs-openclaw--server-buffer)
-    (message "Server buffer not found. Server may not be running.")))
-
-;;;###autoload
-(defun emacs-openclaw-get-available-tools ()
-  "Get list of available tools from the server."
-  (interactive)
-  (if (emacs-openclaw--server-running-p)
-      (request
-        (format "http://127.0.0.1:%d/tools" emacs-openclaw-server-port)
-        :type "GET"
-        :parser 'json-read
-        :success (cl-function
-                  (lambda (&key data &allow-other-keys)
-                    (let ((tools (alist-get 'tools data)))
-                      ;; Save tools configuration persistently
-                      ;; Convert JSON array (vector) to list for proper serialization with json-encode
-                      (emacs-openclaw--save-tools-config 
-                       (list :server-port emacs-openclaw-server-port
-                             :tools (append tools nil)  ; Ensure proper list format for json-encode
-                             :last-updated (format-time-string "%Y-%m-%d %H:%M:%S")))
-                      (message "Available OpenClaw tools: %d found (saved to config)" (length tools))
-                      (with-current-buffer (get-buffer-create "*OpenClaw-Tools*")
-                        (erase-buffer)
-                        (insert "Available OpenClaw Gmail/Calendar Tools:\n\n")
-                        (dolist (tool tools)
-                          (insert (format "• %s (%s %s)\n  %s\n\n"
-                                        (alist-get 'name tool)
-                                        (alist-get 'method tool)
-                                        (alist-get 'endpoint tool)
-                                        (alist-get 'description tool))))
-                        (goto-char (point-min))
-                        (pop-to-buffer (current-buffer))))))
-        :error (cl-function
-                (lambda (&key error-thrown &allow-other-keys)
-                  (message "Failed to get tools from %s: %s\nIs the server running? Try M-x emacs-openclaw--start-server" 
-                           (format "http://127.0.0.1:%d/tools" emacs-openclaw-server-port)
-                           error-thrown))))
-    (message "Server is not running. Start it with M-x emacs-openclaw--start-server")))
-
-;; ============================================================================
 ;; Helper Functions
 ;; ============================================================================
 
@@ -366,7 +194,8 @@ Returns the server directory path, or nil if not found."
                          (content (alist-get 'content message)))
                     (emacs-openclaw--log "\n" nil)
                     (emacs-openclaw--log "OpenClaw: " 'emacs-openclaw-response-face)
-                    (emacs-openclaw--log (format "%s\n" content) nil))))
+                    (emacs-openclaw--log (format "%s\n" content) nil)
+                    (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow))))
       :error (cl-function 
               (lambda (&key error-thrown &allow-other-keys)
                 (emacs-openclaw--log (format "\n[Error]: %s\n" error-thrown) 'error))))))
@@ -389,8 +218,6 @@ Returns the server directory path, or nil if not found."
 (defun emacs-openclaw-chat ()
   "Open the OpenClaw chat buffer and enable the minor mode."
   (interactive)
-  ;; Ensure server is running if auto-start is enabled
-  (emacs-openclaw--ensure-server-running)
   (let ((buf (get-buffer-create emacs-openclaw-buffer-name)))
     (with-current-buffer buf
       (unless (derived-mode-p 'emacs-openclaw-mode)
