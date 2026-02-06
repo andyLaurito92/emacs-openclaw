@@ -93,15 +93,6 @@ Change server port in `server.py`:
 uvicorn.run(app, host="127.0.0.1", port=3333)
 ```
 
-## Roadmap
-
-- [ ] Extract to standalone package (`emacs-openclaw.el`)
-- [ ] Publish to MELPA
-- [ ] Email composition UI
-- [ ] Calendar event creation UI
-- [ ] Streaming response support
-- [ ] Context window management (for longer conversations)
-
 ## License
 
 MIT
