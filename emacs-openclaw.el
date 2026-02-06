@@ -278,15 +278,18 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
 (defun emacs-openclaw--handle-chat-delta (msg)
   "Handle a chat.delta streaming event."
   (let* ((payload (alist-get 'payload msg))
-         (delta (alist-get 'delta payload))
-         (choices (alist-get 'choices delta))
-         (choice (when choices (elt choices 0)))
-         (choice-delta (when choice (alist-get 'delta choice)))
-         (content (when choice-delta (alist-get 'content choice-delta))))
-    (when content
-      (setq emacs-openclaw--current-message-buffer 
-            (concat emacs-openclaw--current-message-buffer content))
-      (emacs-openclaw--log content nil))))
+         (delta (alist-get 'delta payload)))
+    (when delta
+      ;; Handle different delta structures
+      (let* ((choices (alist-get 'choices delta))
+             (choice (when (and choices (> (length choices) 0)) 
+                       (elt choices 0)))
+             (choice-delta (when choice (alist-get 'delta choice)))
+             (content (when choice-delta (alist-get 'content choice-delta))))
+        (when content
+          (setq emacs-openclaw--current-message-buffer 
+                (concat emacs-openclaw--current-message-buffer content))
+          (emacs-openclaw--log content nil))))))
 
 (defun emacs-openclaw--websocket-on-close (ws)
   "Handle websocket connection close event."
@@ -301,16 +304,16 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
 (defun emacs-openclaw--ensure-websocket ()
   "Ensure websocket connection is established."
   (unless (and emacs-openclaw--websocket emacs-openclaw--websocket-connected)
-    (emacs-openclaw--connect-websocket))
-  ;; Wait for connection to complete (with timeout)
-  (let ((max-wait 10)
-        (wait-time 0))
-    (while (and (< wait-time max-wait) 
-                (not emacs-openclaw--websocket-connected))
-      (sleep-for 0.2)
-      (setq wait-time (+ wait-time 0.2)))
-    (unless emacs-openclaw--websocket-connected
-      (error "Failed to establish websocket connection to OpenClaw gateway"))))
+    (emacs-openclaw--connect-websocket)
+    ;; Wait for connection to complete (with timeout)
+    (let ((max-wait 10)
+          (wait-time 0))
+      (while (and (< wait-time max-wait) 
+                  (not emacs-openclaw--websocket-connected))
+        (accept-process-output nil 0.2)
+        (setq wait-time (+ wait-time 0.2)))
+      (unless emacs-openclaw--websocket-connected
+        (error "Failed to establish websocket connection to OpenClaw gateway")))))
 
 (defun emacs-openclaw--connect-websocket ()
   "Connect to OpenClaw gateway via websocket."
