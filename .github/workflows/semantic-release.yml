@@ -1,0 +1,89 @@
+name: Semantic Release
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'VERSION'
+      - 'CHANGELOG.md'
+      - '.github/**'
+      - '**.md'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  analyze-commits:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'chore: bump version') && !contains(github.event.head_commit.message, 'chore: update CHANGELOG')"
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Analyze commits for semantic versioning
+        id: semver
+        run: |
+          # Get the last tag
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Last tag: ${LAST_TAG}"
+          
+          # Get commits since last tag
+          if [ "$LAST_TAG" = "v0.0.0" ]; then
+            COMMITS=$(git log --pretty=format:"%s" --no-merges)
+          else
+            COMMITS=$(git log ${LAST_TAG}..HEAD --pretty=format:"%s" --no-merges)
+          fi
+          
+          # Determine version bump based on conventional commits
+          BUMP_TYPE="none"
+          
+          # Check for breaking changes (major bump)
+          if echo "$COMMITS" | grep -qE "^[a-zA-Z]+(\(.+\))?!:|BREAKING CHANGE:"; then
+            BUMP_TYPE="major"
+          # Check for features (minor bump)
+          elif echo "$COMMITS" | grep -qE "^feat(\(.+\))?:"; then
+            BUMP_TYPE="minor"
+          # Check for fixes (patch bump)
+          elif echo "$COMMITS" | grep -qE "^fix(\(.+\))?:"; then
+            BUMP_TYPE="patch"
+          fi
+          
+          echo "bump_type=${BUMP_TYPE}" >> $GITHUB_OUTPUT
+          echo "Detected bump type: ${BUMP_TYPE}"
+
+      - name: Create version bump PR
+        if: steps.semver.outputs.bump_type != 'none'
+        run: |
+          CURRENT_VERSION=$(cat VERSION 2>/dev/null || echo "0.1.0")
+          IFS='.' read -r -a VERSION_PARTS <<< "$CURRENT_VERSION"
+          MAJOR="${VERSION_PARTS[0]}"
+          MINOR="${VERSION_PARTS[1]}"
+          PATCH="${VERSION_PARTS[2]}"
+          
+          case "${{ steps.semver.outputs.bump_type }}" in
+            major)
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              ;;
+            minor)
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              ;;
+            patch)
+              PATCH=$((PATCH + 1))
+              ;;
+          esac
+          
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          
+          echo "Creating release suggestion for version ${NEW_VERSION}"
+          echo "To create a release:"
+          echo "1. Update VERSION file to ${NEW_VERSION}"
+          echo "2. Merge to main branch"
+          echo "Or use: gh workflow run release.yml -f version=${NEW_VERSION}"

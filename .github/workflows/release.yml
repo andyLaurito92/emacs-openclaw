@@ -1,0 +1,190 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'VERSION'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+        type: string
+      release_type:
+        description: 'Release type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            if [ -n "${{ github.event.inputs.version }}" ]; then
+              VERSION="${{ github.event.inputs.version }}"
+            else
+              # Auto-increment based on release_type
+              CURRENT_VERSION=$(cat VERSION)
+              IFS='.' read -r -a VERSION_PARTS <<< "$CURRENT_VERSION"
+              MAJOR="${VERSION_PARTS[0]}"
+              MINOR="${VERSION_PARTS[1]}"
+              PATCH="${VERSION_PARTS[2]}"
+              
+              case "${{ github.event.inputs.release_type }}" in
+                major)
+                  MAJOR=$((MAJOR + 1))
+                  MINOR=0
+                  PATCH=0
+                  ;;
+                minor)
+                  MINOR=$((MINOR + 1))
+                  PATCH=0
+                  ;;
+                patch)
+                  PATCH=$((PATCH + 1))
+                  ;;
+              esac
+              
+              VERSION="${MAJOR}.${MINOR}.${PATCH}"
+            fi
+          else
+            # Push event on VERSION file change
+            VERSION=$(cat VERSION)
+          fi
+          
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Releasing version: ${VERSION}"
+
+      - name: Check if tag exists
+        id: check_tag
+        run: |
+          if git rev-parse "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update VERSION file
+        if: github.event_name == 'workflow_dispatch' && steps.check_tag.outputs.exists == 'false'
+        run: |
+          echo "${{ steps.version.outputs.version }}" > VERSION
+          git add VERSION
+          git commit -m "chore: bump version to ${{ steps.version.outputs.version }}" || echo "No changes to commit"
+
+      - name: Update emacs-openclaw.el version
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          sed -i 's/^;; Version: .*/;; Version: ${{ steps.version.outputs.version }}/' emacs-openclaw.el
+          git add emacs-openclaw.el
+          git commit -m "chore: update package version to ${{ steps.version.outputs.version }}" || echo "No changes to commit"
+
+      - name: Generate changelog
+        id: changelog
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          DATE=$(date +%Y-%m-%d)
+          
+          # Get the previous tag
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [ -z "$PREVIOUS_TAG" ]; then
+            # First release
+            COMMITS=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          else
+            # Get commits since last tag
+            COMMITS=$(git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          fi
+          
+          # Create changelog entry
+          CHANGELOG_ENTRY="## [${VERSION}] - ${DATE}
+          
+          ### Changes
+          ${COMMITS}
+          "
+          
+          # Update CHANGELOG.md
+          if [ -f CHANGELOG.md ]; then
+            # Insert new entry after "## [Unreleased]" section
+            awk -v entry="$CHANGELOG_ENTRY" '
+              /## \[Unreleased\]/ {
+                print;
+                getline;
+                print;
+                getline;
+                print;
+                print entry;
+                next;
+              }
+              {print}
+            ' CHANGELOG.md > CHANGELOG.md.tmp
+            mv CHANGELOG.md.tmp CHANGELOG.md
+          fi
+          
+          git add CHANGELOG.md
+          git commit -m "chore: update CHANGELOG for v${VERSION}" || echo "No changelog changes"
+          
+          # Save changelog for release notes
+          echo "$CHANGELOG_ENTRY" > /tmp/release_notes.md
+          
+          # Add link to full changelog
+          echo "" >> /tmp/release_notes.md
+          if [ -n "$PREVIOUS_TAG" ]; then
+            echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREVIOUS_TAG}...v${VERSION}" >> /tmp/release_notes.md
+          else
+            echo "**Full Changelog**: https://github.com/${{ github.repository }}/commits/v${VERSION}" >> /tmp/release_notes.md
+          fi
+
+      - name: Push changes
+        if: github.event_name == 'workflow_dispatch' && steps.check_tag.outputs.exists == 'false'
+        run: |
+          git push origin main
+
+      - name: Create and push tag
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          git tag -a "v${{ steps.version.outputs.version }}" -m "Release v${{ steps.version.outputs.version }}"
+          git push origin "v${{ steps.version.outputs.version }}"
+
+      - name: Create GitHub Release
+        if: steps.check_tag.outputs.exists == 'false'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          release_name: Release v${{ steps.version.outputs.version }}
+          body_path: /tmp/release_notes.md
+          draft: false
+          prerelease: false
+
+      - name: Skip release (tag exists)
+        if: steps.check_tag.outputs.exists == 'true'
+        run: |
+          echo "Tag v${{ steps.version.outputs.version }} already exists. Skipping release creation."

@@ -206,6 +206,31 @@ To re-authenticate, simply delete `server/token.json` and restart the server.
 
 MIT
 
+## Release Process
+
+This project uses automated CI/CD for releases with semantic versioning. See [RELEASE.md](RELEASE.md) for detailed documentation.
+
+**Quick release:**
+```bash
+# Update version
+echo "0.2.0" > VERSION
+git add VERSION
+git commit -m "chore: bump version to 0.2.0"
+git push origin main
+```
+
+The CI/CD pipeline will automatically:
+- Update package version in `emacs-openclaw.el`
+- Generate changelog from commits
+- Create git tag and GitHub release
+
+For more options, see the [Release Documentation](RELEASE.md).
+
 ## Contributing
 
 POC phase — features and architecture may change rapidly.
+
+Please use conventional commit messages for automatic version bumping:
+- `feat:` for new features (minor version bump)
+- `fix:` for bug fixes (patch version bump)
+- `feat!:` or `BREAKING CHANGE:` for breaking changes (major version bump)
