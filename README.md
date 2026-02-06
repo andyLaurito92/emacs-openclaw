@@ -16,7 +16,7 @@ Talk to OpenClaw directly from Emacs. A minor mode + FastAPI backend for seamles
 ```bash
 cd server/
 pip install -r requirements.txt
-python server.py
+./start-server.sh
 ```
 
 See [server/README-SERVER.md](server/README-SERVER.md) for detailed OAuth setup instructions.
@@ -26,15 +26,20 @@ See [server/README-SERVER.md](server/README-SERVER.md) for detailed OAuth setup 
 Add to your `init.el`:
 
 ```elisp
-(use-package request
-  :straight t
+(use-package emacs-openclaw
+  :straight (:host github :repo "andyLaurito92/emacs-openclaw")
   :config
-  ;; (copy the OpenClaw integration code from init.el section 19)
-  ;; Configuration goes here
-  )
+  (setq emacs-openclaw-token "your-openclaw-token-here")
+  (setq emacs-openclaw-base-url "http://127.0.0.1:18789"))
 ```
 
-Or link directly to the config once the package is on MELPA.
+Or manually load the package:
+
+```elisp
+(add-to-list 'load-path "~/repos/emacs-openclaw")
+(require 'emacs-openclaw)
+(setq emacs-openclaw-token "your-openclaw-token-here")
+```
 
 ### 3. Usage
 
@@ -50,7 +55,7 @@ Type your message and press RET
 
 **Quick send from anywhere:**
 ```
-C-c C-w r   ;; Send region/buffer to OpenClaw
+C-c C-w r   ;; Send region (or whole buffer) to OpenClaw
 ```
 
 ## Architecture

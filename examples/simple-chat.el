@@ -1,14 +1,15 @@
 ;;; emacs-openclaw-example.el --- Basic usage examples -*- lexical-binding: t; -*-
 
-;; This file demonstrates how to use the OpenClaw integration from Emacs.
+;; This file demonstrates how to use emacs-openclaw from Emacs.
 ;; Copy these patterns into your own config or start building features on top.
 
 ;;; Commentary:
 
-;; The OpenClaw integration provides:
-;; 1. `andy/openclaw-chat` — Opens interactive chat buffer
-;; 2. `andy/openclaw-do-request` — Send a request directly
-;; 3. Custom minor mode `andy/openclaw-mode` — Enables RET to send
+;; The emacs-openclaw package provides:
+;; 1. `emacs-openclaw-chat` — Opens interactive chat buffer
+;; 2. `emacs-openclaw-send-region-or-buffer` — Send a request directly
+;; 3. `emacs-openclaw-send-line` — Send current line in chat mode
+;; 4. Custom minor mode `emacs-openclaw-mode` — Enables RET to send
 
 ;;; Code:
 
@@ -16,15 +17,18 @@
 (defun example/ask-openclaw ()
   "Example: Ask a simple question."
   (interactive)
-  (andy/openclaw-do-request "What is functional programming?"))
+  (emacs-openclaw-send-region-or-buffer)
+  (emacs-openclaw-chat))
 
 ;; Example 2: Send current buffer to OpenClaw for review
 (defun example/review-buffer ()
   "Example: Get OpenClaw's feedback on current buffer."
   (interactive)
   (let ((code (buffer-string)))
-    (andy/openclaw-do-request 
-     (format "Review this code for improvements:\n\n%s" code))))
+    (message "Sending buffer to OpenClaw for review...")
+    (with-temp-buffer
+      (insert (format "Review this code for improvements:\n\n%s" code))
+      (emacs-openclaw-send-region-or-buffer))))
 
 ;; Example 3: Contextual help for current word
 (defun example/explain-word ()
@@ -32,26 +36,31 @@
   (interactive)
   (let ((word (thing-at-point 'word)))
     (when word
-      (andy/openclaw-do-request 
-       (format "Explain the concept: %s" word)))))
+      (message "Asking OpenClaw about: %s" word)
+      (with-temp-buffer
+        (insert (format "Explain the concept: %s" word))
+        (emacs-openclaw-send-region-or-buffer)))))
 
-;; Example 4: Open chat and keep conversation
+;; Example 4: Open chat and start conversation
 (defun example/start-session ()
   "Example: Start an interactive OpenClaw session."
   (interactive)
   ;; Opens the buffer and enters the minor mode
   ;; Now you can type multiple messages and press RET each time
-  (andy/openclaw-chat))
+  (emacs-openclaw-chat))
 
 ;;; How to use:
 
-;; 1. Make sure the FastAPI server is running:
-;;    cd server && python server.py
+;; 1. Make sure emacs-openclaw is loaded:
+;;    M-x load-file RET emacs-openclaw.el
 
-;; 2. Load this file:
-;;    M-x load-file RET emacs-openclaw-example.el
+;; 2. Make sure the FastAPI server is running:
+;;    cd ~/repos/emacs-openclaw && ./start-server.sh
 
-;; 3. Call any example:
+;; 3. Configure your token (in your init.el):
+;;    (setq emacs-openclaw-token "your-openclaw-token")
+
+;; 4. Call any example:
 ;;    M-x example/ask-openclaw RET
 ;;    M-x example/review-buffer RET
 ;;    M-x example/start-session RET
