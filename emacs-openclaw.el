@@ -112,6 +112,9 @@ If nil, uses HTTP requests directly."
 (defconst emacs-openclaw--api-endpoint "/v1/chat/completions"
   "API endpoint path for chat completions.")
 
+(defconst emacs-openclaw--finish-reason-stop "stop"
+  "Finish reason value indicating stream completion.")
+
 ;; ============================================================================
 ;; Configuration Helpers
 ;; ============================================================================
@@ -172,6 +175,12 @@ Returns a plist with :token and :port."
       (let ((window (get-buffer-window)))
         (when window (set-window-point window (point-max)))))))
 
+(defun emacs-openclaw--build-message-payload (prompt stream)
+  "Build message payload for PROMPT with STREAM flag."
+  (json-encode `((model . ,emacs-openclaw-model)
+                 (messages . [((role . "user") (content . ,prompt))])
+                 (stream . ,stream))))
+
 ;; ============================================================================
 ;; WebSocket Functions
 ;; ============================================================================
@@ -199,7 +208,7 @@ Returns a plist with :token and :port."
                 (concat emacs-openclaw--response-accumulator content))
           (emacs-openclaw--log content 'font-lock-keyword-face))
          ;; Handle stream completion
-         ((and finish-reason (string= finish-reason "stop"))
+         ((and finish-reason (string= finish-reason emacs-openclaw--finish-reason-stop))
           (emacs-openclaw--log "\n")
           (setq emacs-openclaw--response-accumulator "")
           (setq emacs-openclaw--response-in-progress nil)))))))
@@ -249,9 +258,7 @@ Returns a plist with :token and :port."
         (emacs-openclaw--log "[Warning: Previous response still in progress - request blocked]\n" 'warning))
     (let ((ws (emacs-openclaw--ensure-websocket)))
       (if ws
-          (let ((payload (json-encode `((model . ,emacs-openclaw-model)
-                                        (messages . [((role . "user") (content . ,prompt))])
-                                        (stream . t)))))
+          (let ((payload (emacs-openclaw--build-message-payload prompt t)))
             (setq emacs-openclaw--response-accumulator "")
             (condition-case err
                 (progn
@@ -279,9 +286,7 @@ Returns a plist with :token and :port."
       :headers `(("Authorization" . ,(format "Bearer %s" token))
                  ("Content-Type" . "application/json")
                  ("x-openclaw-session-key" . ,emacs-openclaw-session-key))
-      :data (json-encode `((model . ,emacs-openclaw-model)
-                           (messages . [((role . "user") (content . ,prompt))])
-                           (stream . :json-false)))
+      :data (emacs-openclaw--build-message-payload prompt :json-false)
       :parser 'json-read
       :success (cl-function 
                 (lambda (&key data &allow-other-keys)
