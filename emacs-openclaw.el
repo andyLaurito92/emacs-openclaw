@@ -195,7 +195,6 @@ Returns a plist with :token and :port."
         (cond
          ;; Accumulate streaming content
          ((and content (stringp content))
-          (setq emacs-openclaw--response-in-progress t)
           (setq emacs-openclaw--response-accumulator
                 (concat emacs-openclaw--response-accumulator content))
           (emacs-openclaw--log content 'font-lock-keyword-face))

@@ -69,23 +69,30 @@ C-c C-w r   ;; Send region (or whole buffer) to OpenClaw
 
 ## Architecture
 
+This project has two components:
+
+1. **OpenClaw Gateway** (port 18789) - AI chat via WebSocket/HTTP
+2. **FastAPI Server** (port 3333, optional) - Gmail/Calendar integration
+
 ```
 ┌─────────────────────────────────────────┐
 │         Emacs Minor Mode                │
 │  (WebSocket/HTTP client + chat UI)      │
-└────────────────┬────────────────────────┘
-                 │
-                 │ WebSocket (streaming) or HTTP
-                 │ (localhost:18789)
-                 │
-┌────────────────▼────────────────────────┐
+└────────┬────────────────────────────────┘
+         │
+         │ WebSocket (streaming) or HTTP
+         │ (localhost:18789)
+         │
+┌────────▼────────────────────────────────┐
 │      OpenClaw Gateway                   │
 │   (AI model + conversation state)       │
 └─────────────────────────────────────────┘
 
+Optional Gmail/Calendar Server:
 ┌─────────────────────────────────────────┐
-│      FastAPI Server (Optional)          │
+│      FastAPI Server                     │
 │  (Gmail + Calendar OAuth wrapper)       │
+│  (localhost:3333)                       │
 └────────────────┬────────────────────────┘
                  │
     ┌────────────┴──────────────┐
