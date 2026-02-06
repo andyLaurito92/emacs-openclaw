@@ -28,22 +28,27 @@ SCOPES = [
     "https://www.googleapis.com/auth/gmail.modify",
 ]
 
+# Get client_secret path from environment or use default
+CLIENT_SECRET_PATH = os.getenv("OPENCLAW_CLIENT_SECRET", "client_secret.json")
+TOKEN_PATH = "token.json"
+
 # Only run OAuth flow if token doesn't exist
-if not os.path.exists("token.json"):
+if not os.path.exists(TOKEN_PATH):
     logger.info("token.json not found, starting OAuth flow...")
-    if not os.path.exists("client_secret.json"):
-        logger.error("client_secret.json not found! Cannot authenticate.")
+    if not os.path.exists(CLIENT_SECRET_PATH):
+        logger.error(f"client_secret.json not found at {CLIENT_SECRET_PATH}! Cannot authenticate.")
         raise FileNotFoundError(
-            "client_secret.json is required for OAuth authentication. "
-            "Please follow the setup instructions in README-SERVER.md"
+            f"client_secret.json is required for OAuth authentication. "
+            f"Expected at: {CLIENT_SECRET_PATH} "
+            f"Please follow the setup instructions in README-SERVER.md"
         )
     
     flow = InstalledAppFlow.from_client_secrets_file(
-        "client_secret.json", SCOPES
+        CLIENT_SECRET_PATH, SCOPES
     )
     creds = flow.run_local_server(port=8080, open_browser=True)
     
-    with open("token.json", "w") as f:
+    with open(TOKEN_PATH, "w") as f:
         f.write(creds.to_json())
     
     logger.info("OAuth complete, token saved to token.json")
