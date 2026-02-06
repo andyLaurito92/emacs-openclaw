@@ -95,6 +95,16 @@ Default fallback is 18789."
   :type 'string
   :group 'emacs-openclaw)
 
+(defcustom emacs-openclaw-welcome-message "Welcome to OpenClaw Chat!"
+  "Welcome message displayed when opening the chat buffer for the first time."
+  :type 'string
+  :group 'emacs-openclaw)
+
+(defcustom emacs-openclaw-instructions "Type your message below and press RET to send."
+  "Instructions displayed in the chat buffer when first opened."
+  :type 'string
+  :group 'emacs-openclaw)
+
 ;; ============================================================================
 ;; Internal Variables
 ;; ============================================================================
@@ -226,11 +236,11 @@ Returns a plist with :token and :port."
       ;; Add welcome message if buffer is empty (first time)
       (when (= (buffer-size) 0)
         (let ((inhibit-read-only t))
-          (insert (propertize "Welcome to OpenClaw Chat!\n" 
+          (insert (propertize (concat emacs-openclaw-welcome-message "\n")
                               'face '(:foreground "yellow" :weight bold)))
           (insert (propertize (concat emacs-openclaw-message-separator "\n")
                               'face 'shadow))
-          (insert "\nType your message below and press RET to send.\n\n")
+          (insert (concat "\n" emacs-openclaw-instructions "\n\n"))
           (insert (propertize "You: " 'face 'emacs-openclaw-user-face)))))
     (pop-to-buffer buf)))
 
