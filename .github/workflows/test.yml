@@ -1,0 +1,36 @@
+name: Emacs lint and tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Emacs
+        uses: purcell/setup-emacs@master
+        with:
+          version: '29.1'
+
+      # STEP 1: Syntax & Parentheses
+      - name: Elisp Syntax Checker
+        run: |
+          emacs -Q --batch emacs-openclaw.el --eval '(check-parens)'
+
+      # STEP 2: Byte-compile (Checks for undefined variables/functions)
+      - name: Byte-compile
+        run: |
+          emacs -Q --batch -L . -f batch-byte-compile emacs-openclaw.el
+
+      # STEP 3: Documentation Linting
+      - name: Docstring Linter
+        run: |
+          emacs -Q --batch emacs-openclaw.el --eval '(checkdoc-file "emacs-openclaw.el")'
+
+      # STEP 4: Logic Tests (ERT)
+      - name: Run ERT Tests
+        run: |
+          # This will run any tests defined in your test file
+          # We'll create this file next!
+          emacs -Q --batch -L . -l tests/test-openclaw.el -f ert-run-tests-batch-and-exit
