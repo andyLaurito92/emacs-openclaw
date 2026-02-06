@@ -211,27 +211,33 @@ Returns a plist with :token and :port."
 ;; ============================================================================
 
 (defun emacs-openclaw--find-server-dir ()
-  "Find the directory containing the OpenClaw server.
-Returns the server directory path, or nil if not found."
-  (let* ((current-file (or load-file-name buffer-file-name))
-         (pkg-dir (when current-file (file-name-directory current-file)))
+  "Find the directory containing the OpenClaw server."
+  (let* ((lib-path (locate-library "emacs-openclaw"))
+         (pkg-dir (when lib-path (file-name-directory lib-path)))
          (server-dir (when pkg-dir (expand-file-name "server" pkg-dir))))
-    (when (and server-dir (file-directory-p server-dir))
-      server-dir)))
+    (if (and server-dir (file-directory-p server-dir))
+        server-dir
+      ;; Fallback for development if locate-library fails
+      (let* ((current-file (or load-file-name buffer-file-name))
+             (dev-dir (when current-file 
+                        (expand-file-name "server" (file-name-directory current-file)))))
+        (when (and dev-dir (file-directory-p dev-dir))
+          dev-dir)))))
 
 (defun emacs-openclaw--server-running-p ()
   "Check if the Gmail/Calendar tools server is running."
-  (condition-case err
-      (with-current-buffer (url-retrieve-synchronously 
-                            (format "http://127.0.0.1:%d/health" emacs-openclaw-server-port)
-                            t nil 5)
-        (goto-char (point-min))
-        (prog1 (search-forward "\"status\"" nil t)
-          (kill-buffer)))
-    (error 
-     (message "emacs-openclaw: Server health check failed: %s" (error-message-string err))
-     nil)))
+  (condition-case nil  ; Remove 'err' to suppress the error object
+      (let ((url-request-method "GET")
+            (url-show-status nil)) ; Keep the echo area clean
+        (with-current-buffer (url-retrieve-synchronously 
+                              (format "http://127.0.0.1:%d/health" emacs-openclaw-server-port)
+                              t nil 1) ; 1 second timeout is plenty for localhost
+          (goto-char (point-min))
+          (prog1 (search-forward "\"status\"" nil t)
+            (kill-buffer))))
+    (error nil))) ; Just return nil silently if the server isn't there
 
+;;;###autoload
 ;;;###autoload
 (defun emacs-openclaw--start-server ()
   "Start the Gmail/Calendar tools server."
@@ -239,15 +245,20 @@ Returns the server directory path, or nil if not found."
   (if (emacs-openclaw--server-running-p)
       (message "OpenClaw server already running on port %d" emacs-openclaw-server-port)
     (let ((server-dir (emacs-openclaw--find-server-dir)))
+      ;; 1. Validate Server Directory
       (unless server-dir
         (error "Cannot find server directory. Please ensure emacs-openclaw is installed correctly"))
       
+      ;; 2. Validate Environment
+      (unless (executable-find "python3")
+        (error "python3 not found. Please install Python 3"))
+      
       (let ((default-directory server-dir))
-        ;; Check if client_secret.json exists
+        ;; 3. Validate Secrets
         (unless (file-exists-p "client_secret.json")
-          (error "client_secret.json not found in %s. Please follow setup instructions in README-SERVER.md" server-dir))
+          (error "client_secret.json not found in %s. Please follow setup instructions" server-dir))
         
-        ;; Start the server process
+        ;; 4. Start the server process
         (setq emacs-openclaw--server-process
               (start-process
                "openclaw-server"
@@ -258,20 +269,20 @@ Returns the server directory path, or nil if not found."
         
         (message "Starting OpenClaw server on port %d..." emacs-openclaw-server-port)
         
-        ;; Wait and poll for server to start (with retries)
-        ;; Note: Health checks are synchronous but brief (5s timeout)
-        (let ((max-attempts 10)
+        ;; 5. Poll for Readiness
+        (let ((max-attempts 15)
               (attempt 0)
-              (delay 0.5))
+              (delay 0.8))
           (while (and (< attempt max-attempts)
                       (not (emacs-openclaw--server-running-p)))
             (setq attempt (1+ attempt))
             (sit-for delay)
-            (setq delay (min 2.0 (* delay 1.5))))  ; Exponential backoff, max 2s
+            ;; Exponential backoff to give Uvicorn time to bind the port
+            (setq delay (min 2.0 (* delay 1.2))))
           
           (if (emacs-openclaw--server-running-p)
               (message "OpenClaw server started successfully on port %d" emacs-openclaw-server-port)
-            (message "Server may still be starting... Check %s buffer for details. Use M-x emacs-openclaw-show-server-buffer" 
+            (message "Server taking longer than expected to start. Check %s buffer." 
                      emacs-openclaw--server-buffer)))))))
 
 ;;;###autoload
