@@ -13,6 +13,16 @@ jobs:
         with:
           version: '29.1'
 
+      -name: Install Dependencies
+      run: |
+        emacs -Q --batch --eval "(progn
+        (require 'package)
+        (add-to-list 'package-archives '(\"melpa\" . \"https://melpa.org/packages/\") t)
+        (package-initialize)
+        (package-refresh-contents)
+        (package-install 'request)
+        (package-install 'deferred))"
+
       # STEP 1: Syntax & Parentheses
       - name: Elisp Syntax Checker
         run: |
