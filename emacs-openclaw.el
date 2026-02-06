@@ -106,6 +106,9 @@ If nil, uses HTTP requests directly."
 (defvar emacs-openclaw--response-buffer ""
   "Buffer for accumulating WebSocket response chunks.")
 
+(defvar emacs-openclaw--response-in-progress nil
+  "Flag indicating whether a response is currently being received.")
+
 (defconst emacs-openclaw--api-endpoint "/v1/chat/completions"
   "API endpoint path for chat completions.")
 
@@ -192,18 +195,21 @@ Returns a plist with :token and :port."
         (cond
          ;; Accumulate streaming content
          ((and content (stringp content))
+          (setq emacs-openclaw--response-in-progress t)
           (setq emacs-openclaw--response-buffer
                 (concat emacs-openclaw--response-buffer content))
           (emacs-openclaw--log content 'font-lock-keyword-face))
          ;; Handle stream completion
          ((and finish-reason (string= finish-reason "stop"))
           (emacs-openclaw--log "\n")
-          (setq emacs-openclaw--response-buffer "")))))))
+          (setq emacs-openclaw--response-buffer "")
+          (setq emacs-openclaw--response-in-progress nil)))))))
 
 (defun emacs-openclaw--websocket-on-close (websocket)
   "Handle WebSocket WEBSOCKET closure."
   (message "OpenClaw WebSocket connection closed")
-  (setq emacs-openclaw--websocket nil))
+  (setq emacs-openclaw--websocket nil)
+  (setq emacs-openclaw--response-in-progress nil))
 
 (defun emacs-openclaw--websocket-on-error (websocket type err)
   "Handle WebSocket WEBSOCKET error of TYPE with details ERR."
@@ -216,6 +222,10 @@ Returns a plist with :token and :port."
                (websocket-openp emacs-openclaw--websocket))
     (let* ((url (concat (emacs-openclaw--get-websocket-url) emacs-openclaw--api-endpoint))
            (token (emacs-openclaw--get-token))
+           ;; Session key is sent in headers during WebSocket handshake.
+           ;; Since WebSocket connections are stateful and long-lived, the session
+           ;; is maintained throughout the connection's lifetime without needing
+           ;; to resend the session key with each message.
            (headers `(("Authorization" . ,(format "Bearer %s" token))
                       ("x-openclaw-session-key" . ,emacs-openclaw-session-key))))
       (condition-case err
@@ -234,12 +244,16 @@ Returns a plist with :token and :port."
 
 (defun emacs-openclaw--send-via-websocket (prompt)
   "Send PROMPT via WebSocket to OpenClaw."
+  (when emacs-openclaw--response-in-progress
+    (message "Previous response still in progress, please wait...")
+    (emacs-openclaw--log "[Warning: Previous response still in progress]\n" 'warning))
   (let ((ws (emacs-openclaw--ensure-websocket)))
     (if ws
         (let ((payload (json-encode `((model . ,emacs-openclaw-model)
                                       (messages . [((role . "user") (content . ,prompt))])
                                       (stream . t)))))
           (setq emacs-openclaw--response-buffer "")
+          (setq emacs-openclaw--response-in-progress t)
           (websocket-send-text ws payload))
       ;; Fallback to HTTP if WebSocket fails
       (emacs-openclaw--send-via-http prompt))))
@@ -320,6 +334,7 @@ Returns a plist with :token and :port."
   (when emacs-openclaw--websocket
     (websocket-close emacs-openclaw--websocket)
     (setq emacs-openclaw--websocket nil)
+    (setq emacs-openclaw--response-in-progress nil)
     (message "Disconnected from OpenClaw")))
 
 ;; ============================================================================
