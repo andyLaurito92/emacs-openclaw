@@ -4,10 +4,10 @@ Talk to OpenClaw directly from Emacs. A minor mode + FastAPI backend for seamles
 
 ## Features
 
-- 💬 **Chat with OpenClaw** — Interactive chat buffer right in Emacs
+- 💬 **Chat with OpenClaw** — Interactive chat buffer right in Emacs with streaming responses
 - 📧 **Gmail Integration** — List, search, and delete emails (backend included)
 - 📅 **Google Calendar** — Create and manage calendar events
-- 🔌 **HTTP-based** — Separates Emacs UI from backend API
+- 🔌 **WebSocket-based** — Real-time streaming chat via OpenClaw Gateway WebSocket protocol
 - 🚀 **Auto-start Server** — Server starts automatically when needed (optional)
 
 ## Quick Start
@@ -88,17 +88,42 @@ M-x emacs-openclaw-get-available-tools   ;; Lists Gmail/Calendar tools
 M-x emacs-openclaw--start-server         ;; Start server manually
 M-x emacs-openclaw--stop-server          ;; Stop server
 M-x emacs-openclaw-show-server-buffer    ;; View server logs
+M-x emacs-openclaw-disconnect            ;; Disconnect WebSocket (auto-reconnects on next message)
 ```
+
+## WebSocket Communication
+
+The package now uses WebSocket protocol for real-time streaming chat with the OpenClaw Gateway:
+
+- **Protocol:** JSON-based request/response over WebSocket
+- **Default Port:** 18789 (configurable via `~/.openclaw/openclaw.json`)
+- **Streaming:** Responses stream in real-time via `event:chat.delta` events
+- **Authentication:** Token-based (auto-detected from `~/.openclaw/openclaw.json`)
+- **Auto-reconnect:** Connection is established automatically when sending messages
+
+The WebSocket connection provides a flowing conversation experience where you see the AI response appear character-by-character as it's being generated, instead of waiting for the complete response.
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────┐
 │         Emacs Minor Mode                │
-│   (HTTP client + chat UI)               │
-│   • Auto-starts server if needed        │
+│   (WebSocket client + chat UI)          │
+│   • Streams responses in real-time      │
+│   • Auto-reconnects if needed           │
 │   • Discovers available tools           │
 │   • Persists tool config                │
+└────────────────┬────────────────────────┘
+                 │
+                 │ WebSocket (localhost:18789)
+                 │ OpenClaw Gateway Protocol
+                 │
+┌────────────────▼────────────────────────┐
+│      OpenClaw Gateway                   │
+│  (WebSocket server + orchestrator)      │
+│  • Handles chat.completions             │
+│  • Streams via event:chat.delta         │
+│  • Manages agent connections            │
 └────────────────┬────────────────────────┘
                  │
                  │ HTTP (localhost:3333)
