@@ -88,6 +88,11 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
   :type 'string
   :group 'emacs-openclaw)
 
+(defcustom emacs-openclaw-websocket-timeout 10
+  "Timeout in seconds for establishing WebSocket connection to OpenClaw gateway."
+  :type 'integer
+  :group 'emacs-openclaw)
+
 ;; ============================================================================
 ;; Internal Variables
 ;; ============================================================================
@@ -234,7 +239,7 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
                                    (scopes . ("operator.read" "operator.write"))
                                    (caps . ())
                                    (commands . ())
-                                   (permissions)
+                                   (permissions . ())
                                    (auth . ((token . ,token)))
                                    (locale . "en-US")
                                    (userAgent . "emacs-openclaw/0.1.0")))))))
@@ -305,7 +310,7 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
   (unless (and emacs-openclaw--websocket emacs-openclaw--websocket-connected)
     (emacs-openclaw--connect-websocket)
     ;; Wait for connection to complete (with timeout)
-    (let ((retries 50))  ; 50 * 0.2s = 10 seconds max
+    (let ((retries (floor (/ emacs-openclaw-websocket-timeout 0.2))))  ; Convert timeout to retry count
       (while (and (> retries 0) 
                   (not emacs-openclaw--websocket-connected))
         (accept-process-output nil 0.2)
