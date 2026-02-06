@@ -211,26 +211,31 @@ Returns a plist with :token and :port."
 ;; ============================================================================
 
 (defun emacs-openclaw--find-server-dir ()
-  "Find the directory containing the OpenClaw server.
-Returns the server directory path, or nil if not found."
-  (let* ((current-file (or load-file-name buffer-file-name))
-         (pkg-dir (when current-file (file-name-directory current-file)))
+  "Find the directory containing the OpenClaw server."
+  (let* ((lib-path (locate-library "emacs-openclaw"))
+         (pkg-dir (when lib-path (file-name-directory lib-path)))
          (server-dir (when pkg-dir (expand-file-name "server" pkg-dir))))
-    (when (and server-dir (file-directory-p server-dir))
-      server-dir)))
+    (if (and server-dir (file-directory-p server-dir))
+        server-dir
+      ;; Fallback for development if locate-library fails
+      (let* ((current-file (or load-file-name buffer-file-name))
+             (dev-dir (when current-file 
+                        (expand-file-name "server" (file-name-directory current-file)))))
+        (when (and dev-dir (file-directory-p dev-dir))
+          dev-dir)))))
 
 (defun emacs-openclaw--server-running-p ()
   "Check if the Gmail/Calendar tools server is running."
-  (condition-case err
-      (with-current-buffer (url-retrieve-synchronously 
-                            (format "http://127.0.0.1:%d/health" emacs-openclaw-server-port)
-                            t nil 5)
-        (goto-char (point-min))
-        (prog1 (search-forward "\"status\"" nil t)
-          (kill-buffer)))
-    (error 
-     (message "emacs-openclaw: Server health check failed: %s" (error-message-string err))
-     nil)))
+  (condition-case nil  ; Remove 'err' to suppress the error object
+      (let ((url-request-method "GET")
+            (url-show-status nil)) ; Keep the echo area clean
+        (with-current-buffer (url-retrieve-synchronously 
+                              (format "http://127.0.0.1:%d/health" emacs-openclaw-server-port)
+                              t nil 1) ; 1 second timeout is plenty for localhost
+          (goto-char (point-min))
+          (prog1 (search-forward "\"status\"" nil t)
+            (kill-buffer))))
+    (error nil))) ; Just return nil silently if the server isn't there
 
 ;;;###autoload
 (defun emacs-openclaw--start-server ()
