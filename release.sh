@@ -141,9 +141,11 @@ do_bump() {
     # Update VERSION file
     echo "$new_version" > VERSION
     
-    # Update emacs-openclaw.el
+    # Update emacs-openclaw.el (cross-platform compatible)
     if [ -f emacs-openclaw.el ]; then
-        sed -i "s/^;; Version: .*/;; Version: $new_version/" emacs-openclaw.el
+        # Create backup, modify, remove backup (works on both macOS and Linux)
+        sed -i.bak "s/^;; Version: .*/;; Version: $new_version/" emacs-openclaw.el
+        rm -f emacs-openclaw.el.bak
         echo "Updated emacs-openclaw.el"
     fi
     

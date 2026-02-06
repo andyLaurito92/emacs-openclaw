@@ -100,7 +100,9 @@ jobs:
       - name: Update emacs-openclaw.el version
         if: steps.check_tag.outputs.exists == 'false'
         run: |
-          sed -i 's/^;; Version: .*/;; Version: ${{ steps.version.outputs.version }}/' emacs-openclaw.el
+          # Cross-platform compatible sed (works on both Linux and macOS)
+          sed -i.bak 's/^;; Version: .*/;; Version: ${{ steps.version.outputs.version }}/' emacs-openclaw.el
+          rm -f emacs-openclaw.el.bak
           git add emacs-openclaw.el
           git commit -m "chore: update package version to ${{ steps.version.outputs.version }}" || echo "No changes to commit"
 

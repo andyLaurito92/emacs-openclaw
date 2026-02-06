@@ -8,7 +8,9 @@ on:
       - 'VERSION'
       - 'CHANGELOG.md'
       - '.github/**'
-      - '**.md'
+      - 'README.md'
+      - 'QUICKSTART.md'
+      - 'DEVELOPMENT.md'
 
 permissions:
   contents: write
