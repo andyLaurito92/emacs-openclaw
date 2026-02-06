@@ -21,7 +21,16 @@ Get OpenClaw + Emacs running in 5 minutes.
 5. Download JSON credentials
 6. Save as: `server/client_secret.json`
 
-### First Run (Authenticate)
+### Install Dependencies
+
+```bash
+cd ~/repos/emacs-openclaw/server
+pip install -r requirements.txt
+```
+
+### First Run (Authenticate) - OPTIONAL
+
+The server will auto-start when you use Emacs, but you can pre-authenticate:
 
 ```bash
 cd ~/repos/emacs-openclaw
@@ -29,34 +38,52 @@ cd ~/repos/emacs-openclaw
 ```
 
 This will:
-- Open your browser for OAuth consent
+- Open your browser for OAuth consent (first time only)
 - Save token to `server/token.json`
 - Start server on `http://127.0.0.1:3333`
 
-Leave it running.
+Press Ctrl+C to stop after authentication if you want to let Emacs manage it.
 
 ## 2. Test in Emacs
 
 In a fresh Emacs session:
 
 ```elisp
-M-x andy/openclaw-chat
+M-x emacs-openclaw-chat
 ```
+
+The server will auto-start if not running (requires `client_secret.json` to be set up).
 
 You should see a `*OpenClaw-Chat*` buffer. Type a message and press RET.
 
-## 3. Subsequent Runs
+## 3. Discover Available Tools
 
-**Start server:**
-```bash
-cd ~/repos/emacs-openclaw
-./start-server.sh
+Check what Gmail/Calendar tools are available:
+
+```elisp
+M-x emacs-openclaw-get-available-tools
 ```
+
+This will:
+- Fetch available tools from the server
+- Display them in a `*OpenClaw-Tools*` buffer
+- Save them to `~/.openclaw/tools-config.json` for persistence
+
+## 4. Subsequent Runs
+
+The server will auto-start when you use `M-x emacs-openclaw-chat` (if not already running).
 
 **Use from Emacs:**
 ```
-C-c C-w s    ;; Open chat
+C-c C-w s    ;; Open chat (auto-starts server)
 C-c C-w r    ;; Quick send (from anywhere)
+```
+
+**Manual server control:**
+```
+M-x emacs-openclaw--start-server  ;; Start manually
+M-x emacs-openclaw--stop-server   ;; Stop server
+M-x emacs-openclaw-show-server-buffer  ;; View server logs
 ```
 
 ## Testing the Backend Directly

@@ -6,6 +6,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 import logging
+import os
 
 from tools import send_email, create_calendar_event, delete_calendar_event, search_emails, delete_email, list_emails
 
@@ -27,16 +28,27 @@ SCOPES = [
     "https://www.googleapis.com/auth/gmail.modify",
 ]
 
-flow = InstalledAppFlow.from_client_secrets_file(
-    "client_secret.json", SCOPES
-)
-
-creds = flow.run_local_server(port=8080, open_browser=True)
-
-with open("token.json", "w") as f:
-    f.write(creds.to_json())
-
-print("OAuth complete, token saved.")
+# Only run OAuth flow if token doesn't exist
+if not os.path.exists("token.json"):
+    logger.info("token.json not found, starting OAuth flow...")
+    if not os.path.exists("client_secret.json"):
+        logger.error("client_secret.json not found! Cannot authenticate.")
+        raise FileNotFoundError(
+            "client_secret.json is required for OAuth authentication. "
+            "Please follow the setup instructions in README-SERVER.md"
+        )
+    
+    flow = InstalledAppFlow.from_client_secrets_file(
+        "client_secret.json", SCOPES
+    )
+    creds = flow.run_local_server(port=8080, open_browser=True)
+    
+    with open("token.json", "w") as f:
+        f.write(creds.to_json())
+    
+    logger.info("OAuth complete, token saved to token.json")
+else:
+    logger.info("Found existing token.json, skipping OAuth flow")
 
 
 app = FastAPI(
@@ -67,6 +79,86 @@ class CalendarEventRequest(BaseModel):
 # =========================
 # Endpoints
 # =========================
+
+@app.get("/health")
+def health_check():
+    """Health check endpoint to verify server is running."""
+    return {
+        "status": "ok",
+        "service": "OpenClaw Google Tools",
+        "version": "1.0.0"
+    }
+
+
+@app.get("/tools")
+def list_tools():
+    """List available tools and their descriptions."""
+    return {
+        "tools": [
+            {
+                "name": "send_email",
+                "endpoint": "/send-email",
+                "method": "POST",
+                "description": "Send an email via Gmail",
+                "parameters": {
+                    "to": "string (email address)",
+                    "subject": "string",
+                    "body": "string"
+                }
+            },
+            {
+                "name": "search_emails",
+                "endpoint": "/search-emails",
+                "method": "GET",
+                "description": "Search emails using Gmail query syntax",
+                "parameters": {
+                    "query": "string (e.g., 'from:user@example.com')"
+                }
+            },
+            {
+                "name": "list_emails",
+                "endpoint": "/emails",
+                "method": "GET",
+                "description": "List recent emails",
+                "parameters": {
+                    "limit": "integer (default: 10)"
+                }
+            },
+            {
+                "name": "delete_email",
+                "endpoint": "/email/{message_id}",
+                "method": "DELETE",
+                "description": "Delete (trash) an email by message ID",
+                "parameters": {
+                    "message_id": "string (email ID)"
+                }
+            },
+            {
+                "name": "create_calendar_event",
+                "endpoint": "/calendar-event",
+                "method": "POST",
+                "description": "Create a Google Calendar event",
+                "parameters": {
+                    "summary": "string",
+                    "start_iso": "string (ISO-8601 datetime)",
+                    "end_iso": "string (ISO-8601 datetime)",
+                    "description": "string (optional)",
+                    "timezone": "string (default: UTC)",
+                    "attendees": "array of email addresses (optional)"
+                }
+            },
+            {
+                "name": "delete_calendar_event",
+                "endpoint": "/calendar-event/{event_id}",
+                "method": "DELETE",
+                "description": "Delete a Google Calendar event by ID",
+                "parameters": {
+                    "event_id": "string (calendar event ID)"
+                }
+            }
+        ]
+    }
+
 
 @app.post("/send-email")
 def send_email_endpoint(payload: SendEmailRequest):
