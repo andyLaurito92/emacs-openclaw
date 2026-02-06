@@ -106,6 +106,19 @@ You can customize the colors used in the chat buffer:
  '(emacs-openclaw-response-face ((t :foreground "magenta" :weight normal))))
 ```
 
+You can also customize the welcome message and instructions:
+
+```elisp
+;; Customize welcome message (default: "Welcome to OpenClaw Chat!")
+(setq emacs-openclaw-welcome-message "Hello! Ready to chat with OpenClaw?")
+
+;; Customize instructions (default: "Type your message below and press RET to send.")
+(setq emacs-openclaw-instructions "Enter your question and hit RET.")
+
+;; Customize message separator
+(setq emacs-openclaw-message-separator "────────────────────────────────")
+```
+
 ### Server Port
 
 Change server port in `server.py`:
