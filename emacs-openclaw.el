@@ -2,7 +2,7 @@
 
 ;; Author: Andres Laurito <andy.laurito@gmail.com>
 ;; Version: 0.1.0
-;; Package-Requires: ((emacs "27.1") (request "0.3.0"))
+;; Package-Requires: ((emacs "27.1") (request "0.3.0") (websocket "1.13"))
 ;; Keywords: tools, openclaw, chat, ai
 ;; URL: https://github.com/andyLaurito92/emacs-openclaw
 
@@ -17,6 +17,7 @@
 (require 'request)
 (require 'json)
 (require 'cl-lib)
+(require 'websocket)
 
 ;; ============================================================================
 ;; Configuration Loading
@@ -74,6 +75,13 @@ Default fallback is 18789."
   :type 'string
   :group 'emacs-openclaw)
 
+(defcustom emacs-openclaw-use-websocket t
+  "Whether to use WebSocket for communication with OpenClaw.
+If t, uses WebSocket for streaming responses.
+If nil, falls back to HTTP requests."
+  :type 'boolean
+  :group 'emacs-openclaw)
+
 ;; ============================================================================
 ;; Internal Variables
 ;; ============================================================================
@@ -86,6 +94,12 @@ Default fallback is 18789."
 
 (defvar emacs-openclaw--port-cache nil
   "Cached port (loaded from config file).")
+
+(defvar emacs-openclaw--websocket nil
+  "Active WebSocket connection to OpenClaw gateway.")
+
+(defvar emacs-openclaw--response-buffer ""
+  "Buffer for accumulating WebSocket response chunks.")
 
 ;; ============================================================================
 ;; Configuration Helpers
@@ -123,6 +137,11 @@ Returns a plist with :token and :port."
   (let ((config (emacs-openclaw--ensure-config)))
     (format "http://127.0.0.1:%d" (plist-get config :port))))
 
+(defun emacs-openclaw--get-websocket-url ()
+  "Get the OpenClaw gateway WebSocket URL."
+  (let ((config (emacs-openclaw--ensure-config)))
+    (format "ws://127.0.0.1:%d" (plist-get config :port))))
+
 (defun emacs-openclaw--get-token ()
   "Get the OpenClaw authentication token."
   (let ((config (emacs-openclaw--ensure-config)))
@@ -142,9 +161,87 @@ Returns a plist with :token and :port."
       (let ((window (get-buffer-window)))
         (when window (set-window-point window (point-max)))))))
 
-(defun emacs-openclaw--send-request (prompt)
-  "Send PROMPT to OpenClaw and log the response."
-  (emacs-openclaw--log (format "\nYou: %s\n" prompt) 'font-lock-comment-face)
+;; ============================================================================
+;; WebSocket Functions
+;; ============================================================================
+
+(defun emacs-openclaw--websocket-on-message (websocket frame)
+  "Handle incoming WebSocket FRAME from WEBSOCKET."
+  (let* ((payload (websocket-frame-payload frame))
+         (json-object-type 'alist)
+         (json-array-type 'list)
+         (data (condition-case err
+                   (json-read-from-string payload)
+                 (error
+                  (emacs-openclaw--log (format "[WebSocket Parse Error]: %s\n" err) 'error)
+                  nil))))
+    (when data
+      (let* ((choices (alist-get 'choices data))
+             (choice (and choices (car choices)))
+             (delta (and choice (alist-get 'delta choice)))
+             (content (and delta (alist-get 'content delta)))
+             (finish-reason (and choice (alist-get 'finish_reason choice))))
+        (cond
+         ;; Accumulate streaming content
+         ((and content (stringp content))
+          (setq emacs-openclaw--response-buffer
+                (concat emacs-openclaw--response-buffer content))
+          (emacs-openclaw--log content 'font-lock-keyword-face))
+         ;; Handle stream completion
+         ((and finish-reason (string= finish-reason "stop"))
+          (emacs-openclaw--log "\n")
+          (setq emacs-openclaw--response-buffer "")))))))
+
+(defun emacs-openclaw--websocket-on-close (websocket)
+  "Handle WebSocket WEBSOCKET closure."
+  (message "OpenClaw WebSocket connection closed")
+  (setq emacs-openclaw--websocket nil))
+
+(defun emacs-openclaw--websocket-on-error (websocket type err)
+  "Handle WebSocket WEBSOCKET error of TYPE with details ERR."
+  (emacs-openclaw--log (format "[WebSocket Error]: %s - %s\n" type err) 'error)
+  (message "OpenClaw WebSocket error: %s" err))
+
+(defun emacs-openclaw--ensure-websocket ()
+  "Ensure a WebSocket connection is established and return it."
+  (unless (and emacs-openclaw--websocket
+               (websocket-openp emacs-openclaw--websocket))
+    (let* ((url (concat (emacs-openclaw--get-websocket-url) "/v1/chat/completions"))
+           (token (emacs-openclaw--get-token))
+           (headers `(("Authorization" . ,(format "Bearer %s" token))
+                      ("x-openclaw-session-key" . ,emacs-openclaw-session-key))))
+      (condition-case err
+          (setq emacs-openclaw--websocket
+                (websocket-open
+                 url
+                 :custom-header-alist headers
+                 :on-message #'emacs-openclaw--websocket-on-message
+                 :on-close #'emacs-openclaw--websocket-on-close
+                 :on-error #'emacs-openclaw--websocket-on-error))
+        (error
+         (emacs-openclaw--log (format "[WebSocket Connection Error]: %s\n" err) 'error)
+         (message "Failed to connect via WebSocket, falling back to HTTP")
+         nil))))
+  emacs-openclaw--websocket)
+
+(defun emacs-openclaw--send-via-websocket (prompt)
+  "Send PROMPT via WebSocket to OpenClaw."
+  (let ((ws (emacs-openclaw--ensure-websocket)))
+    (if ws
+        (let ((payload (json-encode `((model . "openclaw:main")
+                                      (messages . [((role . "user") (content . ,prompt))])
+                                      (stream . t)))))
+          (setq emacs-openclaw--response-buffer "")
+          (websocket-send-text ws payload))
+      ;; Fallback to HTTP if WebSocket fails
+      (emacs-openclaw--send-via-http prompt))))
+
+;; ============================================================================
+;; HTTP Functions
+;; ============================================================================
+
+(defun emacs-openclaw--send-via-http (prompt)
+  "Send PROMPT via HTTP to OpenClaw (fallback method)."
   (let ((token (emacs-openclaw--get-token))
         (base-url (emacs-openclaw--get-base-url)))
     (request
@@ -167,6 +264,13 @@ Returns a plist with :token and :port."
       :error (cl-function 
               (lambda (&key error-thrown &allow-other-keys)
                 (emacs-openclaw--log (format "[Error]: %s\n" error-thrown) 'error))))))
+
+(defun emacs-openclaw--send-request (prompt)
+  "Send PROMPT to OpenClaw using WebSocket or HTTP based on configuration."
+  (emacs-openclaw--log (format "\nYou: %s\n" prompt) 'font-lock-comment-face)
+  (if emacs-openclaw-use-websocket
+      (emacs-openclaw--send-via-websocket prompt)
+    (emacs-openclaw--send-via-http prompt)))
 
 ;; ============================================================================
 ;; Interactive Commands
@@ -201,6 +305,14 @@ Returns a plist with :token and :port."
                   (buffer-substring-no-properties (region-beginning) (region-end))
                 (buffer-string))))
     (emacs-openclaw--send-request text)))
+
+(defun emacs-openclaw-disconnect ()
+  "Disconnect the WebSocket connection to OpenClaw."
+  (interactive)
+  (when emacs-openclaw--websocket
+    (websocket-close emacs-openclaw--websocket)
+    (setq emacs-openclaw--websocket nil)
+    (message "Disconnected from OpenClaw")))
 
 ;; ============================================================================
 ;; Minor Mode Definition

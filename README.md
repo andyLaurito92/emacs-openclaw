@@ -5,9 +5,10 @@ Talk to OpenClaw directly from Emacs. A minor mode + FastAPI backend for seamles
 ## Features
 
 - 💬 **Chat with OpenClaw** — Interactive chat buffer right in Emacs
+- 🌊 **WebSocket Streaming** — Real-time streaming responses for flowing conversations
 - 📧 **Gmail Integration** — List, search, and delete emails (backend included)
 - 📅 **Google Calendar** — Create and manage calendar events
-- 🔌 **HTTP-based** — Separates Emacs UI from backend API
+- 🔌 **Flexible Communication** — WebSocket (default) or HTTP fallback
 
 ## Quick Start
 
@@ -35,6 +36,10 @@ Add to your `init.el`:
   ;; Override if needed:
   ;; (setq emacs-openclaw-token "your-token")
   ;; (setq emacs-openclaw-port 18789)
+  
+  ;; WebSocket is enabled by default for streaming responses
+  ;; Set to nil to use HTTP instead:
+  ;; (setq emacs-openclaw-use-websocket nil)
   
   ;; Evil mode keybindings (if you use Evil)
   (with-eval-after-load 'evil
@@ -64,13 +69,19 @@ C-c C-w r   ;; Send region (or whole buffer) to OpenClaw
 ```
 ┌─────────────────────────────────────────┐
 │         Emacs Minor Mode                │
-│   (HTTP client + chat UI)               │
+│  (WebSocket/HTTP client + chat UI)      │
 └────────────────┬────────────────────────┘
                  │
-                 │ HTTP (localhost:3333)
+                 │ WebSocket (streaming) or HTTP
+                 │ (localhost:18789)
                  │
 ┌────────────────▼────────────────────────┐
-│      FastAPI Server                     │
+│      OpenClaw Gateway                   │
+│   (AI model + conversation state)       │
+└─────────────────────────────────────────┘
+
+┌─────────────────────────────────────────┐
+│      FastAPI Server (Optional)          │
 │  (Gmail + Calendar OAuth wrapper)       │
 └────────────────┬────────────────────────┘
                  │
@@ -84,13 +95,27 @@ C-c C-w r   ;; Send region (or whole buffer) to OpenClaw
 
 ## Configuration
 
+### Communication Mode
+
+By default, emacs-openclaw uses WebSocket for streaming responses. You can control this:
+
+```elisp
+;; Use WebSocket (default - streaming responses)
+(setq emacs-openclaw-use-websocket t)
+
+;; Or use HTTP (non-streaming, fallback mode)
+(setq emacs-openclaw-use-websocket nil)
+```
+
 ### Token & URL (in Emacs)
 
 ```elisp
-(setq openclaw-token "your-token-here")
-(setq openclaw-base-url "http://127.0.0.1:18789")
-(setq openclaw-session-key "emacs-session")
+(setq emacs-openclaw-token "your-token-here")
+(setq emacs-openclaw-port 18789)
+(setq emacs-openclaw-session-key "emacs-session")
 ```
+
+Configuration is auto-detected from `~/.openclaw/openclaw.json` if available.
 
 ### Server Port
 
