@@ -222,7 +222,16 @@ Returns a plist with :token and :port."
     (with-current-buffer buf
       (unless (derived-mode-p 'emacs-openclaw-mode)
         (emacs-openclaw-mode 1)
-        (visual-line-mode 1)))
+        (visual-line-mode 1))
+      ;; Add welcome message if buffer is empty (first time)
+      (when (= (buffer-size) 0)
+        (let ((inhibit-read-only t))
+          (insert (propertize "Welcome to OpenClaw Chat!\n" 
+                              'face '(:foreground "yellow" :weight bold)))
+          (insert (propertize (concat emacs-openclaw-message-separator "\n")
+                              'face 'shadow))
+          (insert "\nType your message below and press RET to send.\n\n")
+          (insert (propertize "You: " 'face 'emacs-openclaw-user-face)))))
     (pop-to-buffer buf)))
 
 ;;;###autoload
