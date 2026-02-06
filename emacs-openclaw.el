@@ -370,7 +370,8 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
                     (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow))))
       :error (cl-function 
               (lambda (&key error-thrown &allow-other-keys)
-                (emacs-openclaw--log (format "\n[Error]: %s\n" error-thrown) 'error))))))
+                (emacs-openclaw--log (format "\n[Error]: %s\n" error-thrown) 'error)
+                (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow))))))
 
 ;; ============================================================================
 ;; Interactive Commands
