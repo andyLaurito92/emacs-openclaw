@@ -105,6 +105,7 @@ You can get this from your OpenClaw gateway."
       (delete-region beg end)
       (emacs-openclaw--send-request text))))
 
+;;;###autoload
 (defun emacs-openclaw-chat ()
   "Open the OpenClaw chat buffer and enable the minor mode."
   (interactive)
@@ -127,6 +128,7 @@ You can get this from your OpenClaw gateway."
 ;; Minor Mode Definition
 ;; ============================================================================
 
+;;;###autoload
 (define-minor-mode emacs-openclaw-mode
   "Minor mode for chatting with OpenClaw.
 
