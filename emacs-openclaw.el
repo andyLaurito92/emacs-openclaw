@@ -366,7 +366,8 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
                          (content (alist-get 'content message)))
                     (emacs-openclaw--log "\n" nil)
                     (emacs-openclaw--log "OpenClaw: " 'emacs-openclaw-response-face)
-                    (emacs-openclaw--log (format "%s\n" content) nil))))
+                    (emacs-openclaw--log (format "%s\n" content) nil)
+                    (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow))))
       :error (cl-function 
               (lambda (&key error-thrown &allow-other-keys)
                 (emacs-openclaw--log (format "\n[Error]: %s\n" error-thrown) 'error))))))
