@@ -32,7 +32,7 @@ SCOPES = [
 CLIENT_SECRET_PATH = os.getenv("OPENCLAW_CLIENT_SECRET", "client_secret.json")
 TOKEN_PATH = "token.json"
 
-logger.info(f"Using client_secret from: {CLIENT_SECRET_PATH}")
+logger.info(f"Using client secret file: {CLIENT_SECRET_PATH}")
 
 # Only run OAuth flow if token doesn't exist
 if not os.path.exists(TOKEN_PATH):
