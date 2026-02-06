@@ -139,6 +139,20 @@ The package includes a tool discovery mechanism that allows OpenClaw to know abo
 (setq emacs-openclaw-auto-start-server t)  ; Auto-start server (default: t)
 ```
 
+### Customizing Chat Appearance
+
+You can customize the colors used in the chat buffer:
+
+```elisp
+;; Customize user input face (default: green, bold)
+(custom-set-faces
+ '(emacs-openclaw-user-face ((t :foreground "blue" :weight bold))))
+
+;; Customize OpenClaw response face (default: cyan, normal)
+(custom-set-faces
+ '(emacs-openclaw-response-face ((t :foreground "magenta" :weight normal))))
+```
+
 ### Server Port
 
 The Gmail/Calendar tools server runs on port 3333 by default. You can customize this in Emacs:
