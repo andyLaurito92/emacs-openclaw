@@ -105,6 +105,7 @@ Returns a plist with :token and :port."
                   emacs-openclaw--port-cache (plist-get config :port))
             (message "emacs-openclaw: Loaded config from ~/.openclaw/openclaw.json (port: %s)" 
                      emacs-openclaw--port-cache))
+        (message "emacs-openclaw: Config file not found or invalid at ~/.openclaw/openclaw.json")
         (setq emacs-openclaw--token-cache :not-found))))
   
   ;; Use explicit settings if provided, otherwise use cached values
