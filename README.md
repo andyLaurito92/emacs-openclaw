@@ -1,0 +1,111 @@
+# emacs-openclaw
+
+Talk to OpenClaw directly from Emacs. A minor mode + FastAPI backend for seamless AI assistance in your editor.
+
+## Features
+
+- 💬 **Chat with OpenClaw** — Interactive chat buffer right in Emacs
+- 📧 **Gmail Integration** — List, search, and delete emails (backend included)
+- 📅 **Google Calendar** — Create and manage calendar events
+- 🔌 **HTTP-based** — Separates Emacs UI from backend API
+
+## Quick Start
+
+### 1. Server Setup
+
+```bash
+cd server/
+pip install -r requirements.txt
+python server.py
+```
+
+See [server/README-SERVER.md](server/README-SERVER.md) for detailed OAuth setup instructions.
+
+### 2. Emacs Configuration
+
+Add to your `init.el`:
+
+```elisp
+(use-package request
+  :straight t
+  :config
+  ;; (copy the OpenClaw integration code from init.el section 19)
+  ;; Configuration goes here
+  )
+```
+
+Or link directly to the config once the package is on MELPA.
+
+### 3. Usage
+
+**Start a chat:**
+```
+C-c C-w s   ;; Open OpenClaw chat buffer
+```
+
+**Send a message:**
+```
+Type your message and press RET
+```
+
+**Quick send from anywhere:**
+```
+C-c C-w r   ;; Send region/buffer to OpenClaw
+```
+
+## Architecture
+
+```
+┌─────────────────────────────────────────┐
+│         Emacs Minor Mode                │
+│   (HTTP client + chat UI)               │
+└────────────────┬────────────────────────┘
+                 │
+                 │ HTTP (localhost:3333)
+                 │
+┌────────────────▼────────────────────────┐
+│      FastAPI Server                     │
+│  (Gmail + Calendar OAuth wrapper)       │
+└────────────────┬────────────────────────┘
+                 │
+    ┌────────────┴──────────────┐
+    │                           │
+┌───▼────────┐         ┌───────▼──┐
+│    Gmail   │         │ Calendar │
+│    API     │         │   API    │
+└────────────┘         └──────────┘
+```
+
+## Configuration
+
+### Token & URL (in Emacs)
+
+```elisp
+(setq openclaw-token "your-token-here")
+(setq openclaw-base-url "http://127.0.0.1:18789")
+(setq openclaw-session-key "emacs-session")
+```
+
+### Server Port
+
+Change server port in `server.py`:
+```python
+uvicorn.run(app, host="127.0.0.1", port=3333)
+```
+
+## Roadmap
+
+- [ ] Extract to standalone package (`emacs-openclaw.el`)
+- [ ] Publish to MELPA
+- [ ] Email composition UI
+- [ ] Calendar event creation UI
+- [ ] Streaming response support
+- [ ] Context window management (for longer conversations)
+
+## License
+
+MIT
+
+## Contributing
+
+POC phase — features and architecture may change rapidly.

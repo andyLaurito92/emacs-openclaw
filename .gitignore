@@ -1,0 +1,36 @@
+# Server credentials (OAuth tokens, secrets)
+server/token.json
+server/client_secret.json
+server/logs.txt
+server/server.log
+server/__pycache__/
+
+# Python
+*.py[cod]
+*$py.class
+__pycache__/
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Emacs
+*~
+*#
+.#*
+auto-save/
