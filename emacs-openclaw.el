@@ -210,7 +210,6 @@ Returns a plist with :token and :port."
          ;; Handle stream completion
          ((and finish-reason (string= finish-reason emacs-openclaw--finish-reason-stop))
           (emacs-openclaw--log "\n")
-          ;; Clear state for next request (accumulator cleared at request start)
           (setq emacs-openclaw--response-in-progress nil)))))))
 
 (defun emacs-openclaw--websocket-on-close (websocket)
