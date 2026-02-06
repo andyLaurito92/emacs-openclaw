@@ -210,7 +210,7 @@ Returns a plist with :token and :port."
          ;; Handle stream completion
          ((and finish-reason (string= finish-reason emacs-openclaw--finish-reason-stop))
           (emacs-openclaw--log "\n")
-          (setq emacs-openclaw--response-accumulator "")
+          ;; Clear state for next request (accumulator cleared at request start)
           (setq emacs-openclaw--response-in-progress nil)))))))
 
 (defun emacs-openclaw--websocket-on-close (websocket)
@@ -254,12 +254,13 @@ Returns a plist with :token and :port."
   "Send PROMPT via WebSocket to OpenClaw."
   (if emacs-openclaw--response-in-progress
       (progn
-        (message "Previous response still in progress, please wait...")
-        (emacs-openclaw--log "[Warning: Previous response still in progress - request blocked]\n" 'warning))
+        (emacs-openclaw--log "[Warning: Previous response still in progress - request blocked]\n" 'warning)
+        (message "Previous response still in progress, please wait..."))
+    ;; Clear accumulator before starting new request
+    (setq emacs-openclaw--response-accumulator "")
     (let ((ws (emacs-openclaw--ensure-websocket)))
       (if ws
           (let ((payload (emacs-openclaw--build-message-payload prompt t)))
-            (setq emacs-openclaw--response-accumulator "")
             (condition-case err
                 (progn
                   (websocket-send-text ws payload)
