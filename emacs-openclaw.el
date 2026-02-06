@@ -211,18 +211,33 @@ Returns a plist with :token and :port."
 ;; ============================================================================
 
 (defun emacs-openclaw--find-server-dir ()
-  "Find the directory containing the OpenClaw server."
-  (let* ((lib-path (locate-library "emacs-openclaw"))
-         (pkg-dir (when lib-path (file-name-directory lib-path)))
-         (server-dir (when pkg-dir (expand-file-name "server" pkg-dir))))
-    (if (and server-dir (file-directory-p server-dir))
-        server-dir
-      ;; Fallback for development if locate-library fails
-      (let* ((current-file (or load-file-name buffer-file-name))
-             (dev-dir (when current-file 
-                        (expand-file-name "server" (file-name-directory current-file)))))
-        (when (and dev-dir (file-directory-p dev-dir))
-          dev-dir)))))
+  "Find the directory containing the OpenClaw server.
+Handles standard installation, Straight.el, and local development."
+  (let* ((library-path (locate-library "emacs-openclaw"))
+         (library-dir (when library-path (file-name-directory library-path))))
+
+    (or
+     ;; 1. Standard Check: Look in the same directory as the .el file
+     ;; (Works for manual install, some package managers)
+     (let ((candidate (and library-dir (expand-file-name "server" library-dir))))
+       (when (and candidate (file-directory-p candidate))
+         candidate))
+
+     ;; 2. Straight.el Fix: Map 'build' dir to 'repos' dir
+     ;; Straight puts elisp in /build/ and other files in /repos/
+     (when (and library-dir (string-match-p "/straight/build/" library-dir))
+       (let* ((repo-dir (replace-regexp-in-string "/straight/build/" "/straight/repos/" library-dir))
+              (candidate (expand-file-name "server" repo-dir)))
+         (when (and candidate (file-directory-p candidate))
+           candidate)))
+
+     ;; 3. Development Fallback: Check relative to current buffer/load file
+     ;; (Works when you are evaluating the buffer manually)
+     (let* ((current-file (or load-file-name buffer-file-name))
+            (dev-dir (when current-file
+                       (expand-file-name "server" (file-name-directory current-file)))))
+       (when (and dev-dir (file-directory-p dev-dir))
+         dev-dir)))))
 
 (defun emacs-openclaw--server-running-p ()
   "Check if the Gmail/Calendar tools server is running."
