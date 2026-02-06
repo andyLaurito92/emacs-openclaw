@@ -38,9 +38,9 @@ logger.info(f"Using client_secret from: {CLIENT_SECRET_PATH}")
 if not os.path.exists(TOKEN_PATH):
     logger.info("token.json not found, starting OAuth flow...")
     if not os.path.exists(CLIENT_SECRET_PATH):
-        logger.error(f"client_secret.json not found at {CLIENT_SECRET_PATH}! Cannot authenticate.")
+        logger.error(f"Client secret file not found at {CLIENT_SECRET_PATH}! Cannot authenticate.")
         raise FileNotFoundError(
-            f"client_secret.json is required for OAuth authentication. "
+            f"Client secret file is required for OAuth authentication. "
             f"Expected at: {CLIENT_SECRET_PATH} "
             f"Please follow the setup instructions in README-SERVER.md"
         )
