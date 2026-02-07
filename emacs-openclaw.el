@@ -296,7 +296,9 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
                           (message "emacs-openclaw: WebSocket connected and authenticated")
                           ;; Extract mainSessionKey from hello-ok response
                           (let* ((payload (alist-get 'payload msg))
-                                 (main-session-key (alist-get 'mainSessionKey payload)))
+                                 (snapshot (alist-get 'snapshot payload))
+                                 (session-defaults (alist-get 'sessionDefaults snapshot))
+                                 (main-session-key (alist-get 'mainSessionKey session-defaults)))
                             (when main-session-key
                               (setq emacs-openclaw-session-key main-session-key)
                               (message "emacs-openclaw: Using session key: %s" emacs-openclaw-session-key))))
@@ -309,7 +311,7 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
                       (funcall handler msg)
                       (remhash msg-id emacs-openclaw--pending-requests))))
                  
-                 ;; Handle connect.challenge event (authentication nonce)
+                 ;; Handle events
                  ((string= msg-type "event")
                   (let ((event-type (alist-get 'event msg)))
                     (message "emacs-openclaw: Got event: %s" event-type)
