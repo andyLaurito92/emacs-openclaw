@@ -439,6 +439,8 @@ The nonce proves we received the server's challenge."
                            (sessionKey . ,emacs-openclaw-session-key)
                            (idempotencyKey . ,req-id)))))))
     
+    (message "emacs-openclaw: Sending chat request id=%s session=%s msg=%s" req-id emacs-openclaw-session-key prompt)
+    
     ;; Store callback for this request
     (puthash req-id callback emacs-openclaw--pending-requests)
     
