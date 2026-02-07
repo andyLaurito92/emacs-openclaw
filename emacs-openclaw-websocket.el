@@ -148,7 +148,10 @@
                     (cond
                      ((string= event-type "agent")
                       (message "emacs-openclaw: Processing agent event")
-                      (emacs-openclaw--handle-agent-event msg)))))
+                      (emacs-openclaw--handle-agent-event msg))
+                     ((string= event-type "chat")
+                      (message "emacs-openclaw: Processing chat event")
+                      (emacs-openclaw--handle-chat-event msg)))))
                  
                  (t
                   (message "emacs-openclaw: Unknown message type: %s" msg-type)))))))))))
