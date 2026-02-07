@@ -282,6 +282,7 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
                     (msg-id (alist-get 'id msg)))
                 
                 (message "emacs-openclaw: Parsed message type=%s id=%s" msg-type msg-id)
+                (message "emacs-openclaw: Full message: %S" msg)
                 
                 (cond
                  ;; Response to our connect request
@@ -293,7 +294,7 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
                           (setq emacs-openclaw--websocket-connected t)
                           (message "emacs-openclaw: WebSocket connected and authenticated"))
                       (let ((error-msg (alist-get 'error msg)))
-                        (message "emacs-openclaw: Connection error: %s" error-msg))))
+                        (message "emacs-openclaw: Connection error: %S" error-msg))))
                   ;; Call any pending handler for this request ID
                   (let ((handler (gethash msg-id emacs-openclaw--pending-requests)))
                     (when handler
