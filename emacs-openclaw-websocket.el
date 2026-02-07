@@ -124,6 +124,14 @@
                   (let ((ok (alist-get 'ok msg)))
                     (if ok
                         (progn
+                          ;; Extract and cache the session key from hello-ok response
+                          (let* ((payload (alist-get 'payload msg))
+                                 (snapshot (alist-get 'snapshot payload))
+                                 (session-defaults (alist-get 'sessionDefaults snapshot))
+                                 (main-session-key (alist-get 'mainSessionKey session-defaults)))
+                            (when main-session-key
+                              (setq emacs-openclaw--session-key-cache main-session-key)
+                              (message "emacs-openclaw: Detected main session key: %s" main-session-key)))
                           (setq emacs-openclaw--websocket-connected t)
                           (message "emacs-openclaw: WebSocket connected and authenticated"))
                       (let ((error-msg (alist-get 'error msg)))
@@ -235,7 +243,7 @@
   (emacs-openclaw--ensure-websocket)
   
   (let* ((req-id (emacs-openclaw--generate-request-id))
-         (session-key (or emacs-openclaw-session-key "agent:main:main"))
+         (session-key (emacs-openclaw--get-session-key))
          (msg (json-encode
                `((type . "req")
                  (id . ,req-id)

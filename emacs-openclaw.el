@@ -22,21 +22,8 @@
 (require 'emacs-openclaw-server)
 (require 'emacs-openclaw-mode)
 
-;; Re-export public commands
-;;;###autoload
-(defalias 'emacs-openclaw-disconnect 'emacs-openclaw-disconnect)
-
-;;;###autoload
-(defalias 'emacs-openclaw-chat 'emacs-openclaw-chat)
-
-;;;###autoload
-(defalias 'emacs-openclaw-send-region-or-buffer 'emacs-openclaw-send-region-or-buffer)
-
-;;;###autoload
-(defalias 'emacs-openclaw-show-server-buffer 'emacs-openclaw-show-server-buffer)
-
-;;;###autoload
-(defalias 'emacs-openclaw-get-available-tools 'emacs-openclaw-get-available-tools)
+;; Public API is re-exported from submodules via require statements above.
+;; No need for defalias — the submodules define the actual functions.
 
 (provide 'emacs-openclaw)
 ;;; emacs-openclaw.el ends here

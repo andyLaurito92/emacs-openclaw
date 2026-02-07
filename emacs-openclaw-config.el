@@ -72,6 +72,8 @@ If nil, will be auto-detected from the main session key provided by the gateway.
 
 (defvar emacs-openclaw--token-cache nil)
 (defvar emacs-openclaw--port-cache nil)
+(defvar emacs-openclaw--session-key-cache nil
+  "Cached session key detected from gateway hello-ok response.")
 
 ;; ============================================================================
 ;; Configuration Loading
@@ -152,6 +154,13 @@ If nil, will be auto-detected from the main session key provided by the gateway.
 
 (defun emacs-openclaw--get-token ()
   (plist-get (emacs-openclaw--ensure-config) :token))
+
+(defun emacs-openclaw--get-session-key ()
+  "Get the session key to use for requests.
+Tries in order: explicit config, cached from gateway, or default to main session."
+  (or emacs-openclaw-session-key
+      emacs-openclaw--session-key-cache
+      "agent:main:main"))  ; Fallback to main agent session
 
 (provide 'emacs-openclaw-config)
 ;;; emacs-openclaw-config.el ends here
