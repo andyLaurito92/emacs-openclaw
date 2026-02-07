@@ -308,9 +308,6 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
                   (let ((event-type (alist-get 'event msg)))
                     (message "emacs-openclaw: Got event: %s" event-type)
                     (cond
-                     ;; Challenge response required
-                     ((string= event-type "connect.challenge")
-                      (emacs-openclaw--handle-connect-challenge msg))
                      ;; Streaming chat delta
                      ((string= event-type "chat.delta")
                       (emacs-openclaw--handle-chat-delta msg)))))
