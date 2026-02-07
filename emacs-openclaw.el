@@ -301,23 +301,7 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
                     (when handler
                       (message "emacs-openclaw: Calling handler for %s" msg-id)
                       (funcall handler msg)
-                      (remhash msg-id emacs-openclaw--pending-requests)))
-                  ;; Also extract and log response text from agent method result
-                  (when (string= msg-type "res")
-                    (let* ((payload (alist-get 'payload msg))
-                           (result (alist-get 'result payload))
-                           (payloads (alist-get 'payloads result))
-                           (first-payload (when (listp payloads) (car payloads)))
-                           (response-text (when first-payload (alist-get 'text first-payload))))
-                      (when response-text
-                        (message "emacs-openclaw: Agent response: %s" response-text)
-                        (setq emacs-openclaw--current-message-buffer 
-                              (concat emacs-openclaw--current-message-buffer response-text))
-                        (emacs-openclaw--log response-text nil)
-                        ;; Add separator after response
-                        (emacs-openclaw--log "\n" nil)
-                        (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow)
-                        (emacs-openclaw--log "\n" nil)))))
+                      (remhash msg-id emacs-openclaw--pending-requests)))))
                  
                  ;; Handle events
                  ((string= msg-type "event")
@@ -378,25 +362,27 @@ The nonce proves we received the server's challenge."
   (ignore-errors
     (let* ((payload (alist-get 'payload msg))
            (stream (alist-get 'stream payload))
-           (data (alist-get 'data payload))
-           (state (alist-get 'state payload)))
-      (message "emacs-openclaw: Agent event stream=%s data=%s state=%s" stream (when data (type-of data)) state)
+           (data (alist-get 'data payload)))
+      (message "emacs-openclaw: Agent event stream=%s" stream)
       ;; Handle assistant response stream
-      (when (and (string= stream "assistant") data)
+      (when (string= stream "assistant")
         (let* ((text (alist-get 'text data))
                (delta (alist-get 'delta data)))
-          (message "emacs-openclaw: Agent stream text=%s delta=%s" text delta)
-          ;; Use delta if available (incremental), otherwise use full text
-          (let ((content (or delta text)))
-            (when content
-              (message "emacs-openclaw: Logging content: %s" content)
-              (setq emacs-openclaw--current-message-buffer 
-                    (concat emacs-openclaw--current-message-buffer content))
-              (emacs-openclaw--log content nil)))))
-      ;; Add separator when response stream completes
-      (when (string= state "end")
+          (message "emacs-openclaw: Agent stream delta=%s" delta)
+          ;; Use delta for incremental updates
+          (when delta
+            (message "emacs-openclaw: Logging content: %s" delta)
+            (setq emacs-openclaw--current-message-buffer 
+                  (concat emacs-openclaw--current-message-buffer delta))
+            (emacs-openclaw--log delta nil))))
+      ;; Add separator when lifecycle ends
+      (when (and (string= stream "lifecycle")
+                 (let ((phase (alist-get 'phase data)))
+                   (string= phase "end")))
         (emacs-openclaw--log "\n" nil)
-        (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow))))))
+        (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow)
+        (emacs-openclaw--log "\n" nil)))))
+
 
 (defun emacs-openclaw--handle-chat-event (msg)
   "Handle a chat streaming event from OpenClaw."
