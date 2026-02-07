@@ -240,7 +240,6 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
                                    (scopes . ["operator.read" "operator.write"])
                                    (caps . [])
                                    (commands . [])
-                                   (permissions . [])
                                    (auth . ((token . ,token)))
                                    (locale . "en-US")
                                    (userAgent . "emacs-openclaw/0.1.0")))))))
