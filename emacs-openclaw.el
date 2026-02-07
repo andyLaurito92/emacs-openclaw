@@ -327,7 +327,7 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
 The server sends a nonce that we must include in a follow-up connect request."
   (let* ((payload (alist-get 'payload msg))
          (nonce (alist-get 'nonce payload)))
-    (when nonce
+    (when (and nonce (not emacs-openclaw--websocket-connected))
       (message "emacs-openclaw: Received challenge nonce: %s" nonce)
       (setq emacs-openclaw--challenge-nonce nonce)
       ;; Send another connect request with the nonce included
@@ -354,7 +354,6 @@ The nonce proves we received the server's challenge."
                                    (caps . [])
                                    (commands . [])
                                    (auth . ((token . ,token)))
-                                   (device . ((nonce . ,nonce)))
                                    (locale . "en-US")
                                    (userAgent . "emacs-openclaw/0.1.0")))))))
     (websocket-send-text emacs-openclaw--websocket connect-msg)
