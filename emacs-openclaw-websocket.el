@@ -99,7 +99,7 @@
       (when msg-text
         (unless (string-empty-p (string-trim msg-text))
           (let ((preview (substring msg-text 0 (min 100 (length msg-text)))))
-            (message "emacs-openclaw: [RAW] Received frame (%d bytes): %s..." (length msg-text) preview)))
+            (message "emacs-openclaw: [RAW] Received frame (%d bytes): %s..." (length msg-text) preview))
           
           (let ((msg nil)
                 (parse-err nil))
