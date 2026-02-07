@@ -10,6 +10,7 @@
 
 (require 'emacs-openclaw-config)
 (require 'emacs-openclaw-websocket)
+(require 'emacs-openclaw-server)
 
 ;; ============================================================================
 ;; Customization Variables
@@ -130,9 +131,6 @@
                   (buffer-substring-no-properties (region-beginning) (region-end))
                 (buffer-string))))
     (emacs-openclaw--send-request text)))
-
-;; Forward declare for mode definition
-(declare-function emacs-openclaw--ensure-server-running "emacs-openclaw-server")
 
 (provide 'emacs-openclaw-chat)
 ;;; emacs-openclaw-chat.el ends here
