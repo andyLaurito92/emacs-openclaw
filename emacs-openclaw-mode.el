@@ -12,15 +12,23 @@
 (declare-function emacs-openclaw-send-line "emacs-openclaw-chat")
 
 ;; ============================================================================
+;; Keymap Definition
+;; ============================================================================
+
+(defvar emacs-openclaw-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "RET") #'emacs-openclaw-send-line)
+    map)
+  "Keymap for `emacs-openclaw-mode'.")
+
+;; ============================================================================
 ;; Minor Mode Definition
 ;; ============================================================================
 
 (define-minor-mode emacs-openclaw-mode
   "Minor mode for chatting with OpenClaw."
   :lighter " Claw"
-  :keymap (let ((map (make-sparse-keymap)))
-            (define-key map (kbd "RET") #'emacs-openclaw-send-line)
-            map))
+  :keymap emacs-openclaw-mode-map)
 
 (provide 'emacs-openclaw-mode)
 ;;; emacs-openclaw-mode.el ends here
