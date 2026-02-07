@@ -329,10 +329,9 @@ The server sends a nonce that we must echo back to prove authentication."
     (when nonce
       (message "emacs-openclaw: Received challenge nonce: %s" nonce)
       (let ((challenge-response (json-encode
-                                 `((type . "res")
-                                   (id . nil)
-                                   (method . "connect.challenge")
-                                   (params . ((nonce . ,nonce)))))))
+                                 `((type . "event")
+                                   (event . "connect.challenge")
+                                   (payload . ((nonce . ,nonce)))))))
         (websocket-send-text emacs-openclaw--websocket challenge-response)
         (message "emacs-openclaw: Sent challenge response")))))
 
