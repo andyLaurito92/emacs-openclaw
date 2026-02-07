@@ -138,6 +138,12 @@
     (unless token (error "OpenClaw token not found"))
     (list :token token :port port)))
 
+(defun emacs-openclaw--get-base-url ()
+  "Get the base URL for the OpenClaw gateway."
+  (let* ((config (emacs-openclaw--ensure-config))
+         (port (plist-get config :port)))
+    (format "http://127.0.0.1:%d" port)))
+
 ;; ============================================================================
 ;; WebSocket Connection Management
 ;; ============================================================================
