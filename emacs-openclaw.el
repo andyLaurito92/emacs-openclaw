@@ -323,7 +323,7 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
                   (message "emacs-openclaw: Unknown message type: %s" msg-type)))))))
         
         ;; If msg-text is nil or empty, just silently skip
-        )))))
+        )))
 
 (defun emacs-openclaw--handle-connect-challenge (msg)
   "Handle connect.challenge event from server.
