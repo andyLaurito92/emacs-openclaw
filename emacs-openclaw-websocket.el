@@ -71,22 +71,6 @@
         (emacs-openclaw--log "\n" nil)
         (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow)))))
 
-(defun emacs-openclaw--handle-chat-event (msg)
-  "Handle a chat streaming event from OpenClaw."
-  (message "emacs-openclaw: Processing chat event, full msg: %S" msg)
-  (let* ((payload (alist-get 'payload msg))
-         (state (alist-get 'state payload))
-         (message-obj (alist-get 'message payload)))
-    (message "emacs-openclaw: Chat event state=%s message-obj=%S" state message-obj)
-    ;; Extract text from the message object
-    (when message-obj
-      (let* ((content (alist-get 'content message-obj))
-             (first-content (when (listp content) (car content)))
-             (text (when first-content (alist-get 'text first-content))))
-        (when text
-          (setq emacs-openclaw--current-message-buffer 
-                (concat emacs-openclaw--current-message-buffer text))
-          (emacs-openclaw--log text nil))))))
 
 ;; ============================================================================
 ;; WebSocket Message Handler
@@ -151,10 +135,7 @@
                     (cond
                      ((string= event-type "agent")
                       (message "emacs-openclaw: Processing agent event")
-                      (emacs-openclaw--handle-agent-event msg))
-                     ((string= event-type "chat")
-                      (message "emacs-openclaw: Processing chat event")
-                      (emacs-openclaw--handle-chat-event msg)))))
+                      (emacs-openclaw--handle-agent-event msg)))))
                  
                  (t
                   (message "emacs-openclaw: Unknown message type: %s" msg-type)))))))))))
