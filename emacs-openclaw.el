@@ -249,48 +249,57 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
   "Handle incoming websocket messages."
   (condition-case err
       (let* ((msg-text (websocket-frame-text frame)))
-        ;; Skip empty messages
-        (unless (string-empty-p (string-trim msg-text))
+        ;; Debug: Log what we received
+        (when msg-text
+          (let ((preview (substring msg-text 0 (min 80 (length msg-text)))))
+            (message "emacs-openclaw: Frame received (%d bytes): %s" (length msg-text) preview)))
+        
+        ;; Skip nil, empty, or whitespace-only messages
+        (when (and msg-text (not (string-empty-p (string-trim msg-text))))
           ;; Try to parse as JSON
-          (let* ((json-object-type 'alist)
-                 (json-array-type 'list)
-                 (msg (json-read-from-string msg-text))
-                 (msg-type (alist-get 'type msg))
-                 (msg-id (alist-get 'id msg)))
+          (condition-case json-err
+              (let* ((json-object-type 'alist)
+                     (json-array-type 'list)
+                     (msg (json-read-from-string msg-text))
+                     (msg-type (alist-get 'type msg))
+                     (msg-id (alist-get 'id msg)))
+                
+                (cond
+                 ;; Response to our connect request
+                 ((and (string= msg-type "res") msg-id)
+                  (let ((ok (alist-get 'ok msg)))
+                    (if ok
+                        (progn
+                          (setq emacs-openclaw--websocket-connected t)
+                          (message "emacs-openclaw: WebSocket connected and authenticated"))
+                      (let ((error-msg (alist-get 'error msg)))
+                        (message "emacs-openclaw: Connection error: %s" error-msg))))
+                  ;; Call any pending handler for this request ID
+                  (let ((handler (gethash msg-id emacs-openclaw--pending-requests)))
+                    (when handler
+                      (funcall handler msg)
+                      (remhash msg-id emacs-openclaw--pending-requests))))
+                 
+                 ;; Streaming event (chat.delta)
+                 ((string= msg-type "event")
+                  (let ((event-type (alist-get 'event msg)))
+                    (when (string= event-type "chat.delta")
+                      (emacs-openclaw--handle-chat-delta msg))))
+                 
+                 ;; Other message types with a type field
+                 ((and msg-type (not (string-empty-p msg-type)))
+                  (message "emacs-openclaw: Received message type: %s" msg-type))))
             
-            (cond
-             ;; Response to our connect request
-             ((and (string= msg-type "res") msg-id)
-              (let ((ok (alist-get 'ok msg)))
-                (if ok
-                    (progn
-                      (setq emacs-openclaw--websocket-connected t)
-                      (message "emacs-openclaw: WebSocket connected and authenticated"))
-                  (let ((error-msg (alist-get 'error msg)))
-                    (message "emacs-openclaw: Connection error: %s" error-msg))))
-              ;; Call any pending handler for this request ID
-              (let ((handler (gethash msg-id emacs-openclaw--pending-requests)))
-                (when handler
-                  (funcall handler msg)
-                  (remhash msg-id emacs-openclaw--pending-requests))))
-             
-             ;; Streaming event (chat.delta)
-             ((string= msg-type "event")
-              (let ((event-type (alist-get 'event msg)))
-                (when (string= event-type "chat.delta")
-                  (emacs-openclaw--handle-chat-delta msg))))
-             
-             ;; Other message types with a type field
-             ((and msg-type (not (string-empty-p msg-type)))
-              (message "emacs-openclaw: Received message type: %s" msg-type))))))
+            ;; Error handling for JSON parsing within the message handler
+            (json-readtable-error
+             (message "emacs-openclaw: JSON parse error in frame. Text: %s" 
+                      (substring msg-text 0 (min 100 (length msg-text)))))
+            (error
+             (message "emacs-openclaw: Error parsing frame JSON: %s" json-err)))))
     
-    ;; Error handling for JSON parsing
-    (json-readtable-error
-     (let ((preview (substring (websocket-frame-text frame) 0 (min 50 (length (websocket-frame-text frame))))))
-       (message "emacs-openclaw: JSON parse error. Raw message starts with: %s..." preview)))
-    
+    ;; Outer error handler
     (error
-     (message "emacs-openclaw: WebSocket message handling error: %s" err))))
+     (message "emacs-openclaw: WebSocket message handler error: %s" err))))
 
 (defun emacs-openclaw--handle-chat-delta (msg)
   "Handle a chat.delta streaming event."
