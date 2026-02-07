@@ -58,9 +58,11 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
                  (integer :tag "Explicit port"))
   :group 'emacs-openclaw)
 
-(defcustom emacs-openclaw-session-key "emacs-session"
-  "Session key for OpenClaw requests."
-  :type 'string
+(defcustom emacs-openclaw-session-key nil
+  "Session key for OpenClaw requests.
+If nil, will be auto-detected from the main session key provided by the gateway."
+  :type '(choice (const :tag "Auto-detect from gateway" nil)
+                 (string :tag "Explicit session key"))
   :group 'emacs-openclaw)
 
 (defcustom emacs-openclaw-server-port 3333
@@ -100,6 +102,8 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
 (defvar emacs-openclaw--mode-map nil)
 (defvar emacs-openclaw--token-cache nil)
 (defvar emacs-openclaw--port-cache nil)
+(defvar emacs-openclaw--session-key-cache nil
+  "Cached session key detected from gateway hello-ok response.")
 (defvar emacs-openclaw--server-process nil)
 (defvar emacs-openclaw--server-buffer "*OpenClaw-Server*")
 (defvar emacs-openclaw--websocket nil
@@ -213,6 +217,13 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
 (defun emacs-openclaw--get-token ()
   (plist-get (emacs-openclaw--ensure-config) :token))
 
+(defun emacs-openclaw--get-session-key ()
+  "Get the session key to use for requests.
+Tries in order: explicit config, cached from gateway, or default to main session."
+  (or emacs-openclaw-session-key
+      emacs-openclaw--session-key-cache
+      "agent:main:main"))  ; Fallback to main agent session
+
 ;; ============================================================================
 ;; WebSocket Connection Management
 ;; ============================================================================
@@ -292,6 +303,14 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
                   (let ((ok (alist-get 'ok msg)))
                     (if ok
                         (progn
+                          ;; Extract and cache the session key from hello-ok response
+                          (let* ((payload (alist-get 'payload msg))
+                                 (snapshot (alist-get 'snapshot payload))
+                                 (session-defaults (alist-get 'sessionDefaults snapshot))
+                                 (main-session-key (alist-get 'mainSessionKey session-defaults)))
+                            (when main-session-key
+                              (setq emacs-openclaw--session-key-cache main-session-key)
+                              (message "emacs-openclaw: Detected main session key: %s" main-session-key)))
                           (setq emacs-openclaw--websocket-connected t)
                           (message "emacs-openclaw: WebSocket connected and authenticated"))
                       (let ((error-msg (alist-get 'error msg)))
@@ -459,16 +478,17 @@ The nonce proves we received the server's challenge."
   (emacs-openclaw--ensure-websocket)
   
   (let* ((req-id (emacs-openclaw--generate-request-id))
+         (session-key (emacs-openclaw--get-session-key))
          (msg (json-encode
                `((type . "req")
                  (id . ,req-id)
                  (method . "agent")
-                 (params . ((sessionKey . ,emacs-openclaw-session-key)
+                 (params . ((sessionKey . ,session-key)
                            (message . ,prompt)
                            (idempotencyKey . ,req-id)
                            (deliver . :json-false)))))))
     
-    (message "emacs-openclaw: Sending agent request id=%s session=%s msg=%s" req-id emacs-openclaw-session-key prompt)
+    (message "emacs-openclaw: Sending agent request id=%s session=%s msg=%s" req-id session-key prompt)
     
     ;; Store callback for this request
     (puthash req-id callback emacs-openclaw--pending-requests)
