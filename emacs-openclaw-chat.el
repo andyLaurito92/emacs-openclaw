@@ -88,8 +88,17 @@
      (let ((ok (alist-get 'ok response)))
        (if ok
            (progn
-             ;; Separator is added by handle-agent-event when state="end"
-             nil)
+             ;; Extract response text from the result
+             (let* ((payload (alist-get 'payload response))
+                    (result (alist-get 'result payload))
+                    (payloads (alist-get 'payloads result))
+                    (first-payload (when (listp payloads) (car payloads)))
+                    (response-text (when first-payload (alist-get 'text first-payload))))
+               (when response-text
+                 (emacs-openclaw--log response-text nil)
+                 (emacs-openclaw--log "\n" nil)
+                 (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow)
+                 (emacs-openclaw--log "\n" nil))))
          (let ((error-data (alist-get 'error response)))
            (emacs-openclaw--log (format "\n[Error]: %s\n" error-data) 'error)
            (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow)))))))
