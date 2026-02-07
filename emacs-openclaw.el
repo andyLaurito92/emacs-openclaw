@@ -362,8 +362,9 @@ The nonce proves we received the server's challenge."
   (ignore-errors
     (let* ((payload (alist-get 'payload msg))
            (stream (alist-get 'stream payload))
-           (data (alist-get 'data payload)))
-      (message "emacs-openclaw: Agent event stream=%s data=%s" stream (when data (type-of data)))
+           (data (alist-get 'data payload))
+           (state (alist-get 'state payload)))
+      (message "emacs-openclaw: Agent event stream=%s data=%s state=%s" stream (when data (type-of data)) state)
       ;; Handle assistant response stream
       (when (and (string= stream "assistant") data)
         (let* ((text (alist-get 'text data))
@@ -375,7 +376,11 @@ The nonce proves we received the server's challenge."
               (message "emacs-openclaw: Logging content: %s" content)
               (setq emacs-openclaw--current-message-buffer 
                     (concat emacs-openclaw--current-message-buffer content))
-              (emacs-openclaw--log content nil)))))))))
+              (emacs-openclaw--log content nil)))))
+      ;; Add separator when response stream completes
+      (when (string= state "end")
+        (emacs-openclaw--log "\n" nil)
+        (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow))))))
 
 (defun emacs-openclaw--handle-chat-event (msg)
   "Handle a chat streaming event from OpenClaw."
