@@ -313,7 +313,11 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
                         (message "emacs-openclaw: Agent response: %s" response-text)
                         (setq emacs-openclaw--current-message-buffer 
                               (concat emacs-openclaw--current-message-buffer response-text))
-                        (emacs-openclaw--log response-text nil)))))
+                        (emacs-openclaw--log response-text nil)
+                        ;; Add separator after response
+                        (emacs-openclaw--log "\n" nil)
+                        (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow)
+                        (emacs-openclaw--log "\n" nil)))))
                  
                  ;; Handle events
                  ((string= msg-type "event")
