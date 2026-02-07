@@ -318,6 +318,7 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
                     (cond
                      ;; Streaming agent events (assistant responses)
                      ((string= event-type "agent")
+                      (message "emacs-openclaw: Processing agent event: %S" msg)
                       (emacs-openclaw--handle-agent-event msg)))))
                  
                  ;; Other message types
@@ -455,19 +456,18 @@ The nonce proves we received the server's challenge."
     (message "emacs-openclaw: Disconnected from gateway")))
 
 (defun emacs-openclaw--websocket-send-chat (prompt callback)
-  "Send a chat completion request via websocket."
+  "Send a chat completion request via websocket using the agent method."
   (emacs-openclaw--ensure-websocket)
   
   (let* ((req-id (emacs-openclaw--generate-request-id))
          (msg (json-encode
                `((type . "req")
                  (id . ,req-id)
-                 (method . "chat.send")
-                 (params . ((message . ,prompt)
-                           (sessionKey . ,emacs-openclaw-session-key)
-                           (idempotencyKey . ,req-id)))))))
+                 (method . "agent")
+                 (params . ((sessionKey . ,emacs-openclaw-session-key)
+                           (message . ,prompt)))))))
     
-    (message "emacs-openclaw: Sending chat request id=%s session=%s msg=%s" req-id emacs-openclaw-session-key prompt)
+    (message "emacs-openclaw: Sending agent request id=%s session=%s msg=%s" req-id emacs-openclaw-session-key prompt)
     
     ;; Store callback for this request
     (puthash req-id callback emacs-openclaw--pending-requests)
