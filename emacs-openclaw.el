@@ -293,7 +293,13 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
                     (if ok
                         (progn
                           (setq emacs-openclaw--websocket-connected t)
-                          (message "emacs-openclaw: WebSocket connected and authenticated"))
+                          (message "emacs-openclaw: WebSocket connected and authenticated")
+                          ;; Extract mainSessionKey from hello-ok response
+                          (let* ((payload (alist-get 'payload msg))
+                                 (main-session-key (alist-get 'mainSessionKey payload)))
+                            (when main-session-key
+                              (setq emacs-openclaw-session-key main-session-key)
+                              (message "emacs-openclaw: Using session key: %s" emacs-openclaw-session-key))))
                       (let ((error-msg (alist-get 'error msg)))
                         (message "emacs-openclaw: Connection error: %S" error-msg))))
                   ;; Call any pending handler for this request ID
