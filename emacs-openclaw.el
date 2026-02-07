@@ -308,9 +308,9 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
                   (let ((event-type (alist-get 'event msg)))
                     (message "emacs-openclaw: Got event: %s" event-type)
                     (cond
-                     ;; Streaming chat delta
-                     ((string= event-type "chat.delta")
-                      (emacs-openclaw--handle-chat-delta msg)))))
+                     ;; Streaming chat event
+                     ((string= event-type "chat")
+                      (emacs-openclaw--handle-chat-event msg)))))
                  
                  ;; Other message types
                  (t
@@ -356,20 +356,17 @@ The nonce proves we received the server's challenge."
     (websocket-send-text emacs-openclaw--websocket connect-msg)
     (message "emacs-openclaw: Sent connect request with challenge nonce")))
 
-(defun emacs-openclaw--handle-chat-delta (msg)
-  "Handle a chat.delta streaming event."
+(defun emacs-openclaw--handle-chat-event (msg)
+  "Handle a chat streaming event from OpenClaw."
   (let* ((payload (alist-get 'payload msg))
-         (delta (alist-get 'delta payload)))
-    (when delta
-      ;; Handle different delta structures
-      (let* ((choices (alist-get 'choices delta))
-             (choice (when choices (car choices)))
-             (choice-delta (when choice (alist-get 'delta choice)))
-             (content (when choice-delta (alist-get 'content choice-delta))))
-        (when content
-          (setq emacs-openclaw--current-message-buffer 
-                (concat emacs-openclaw--current-message-buffer content))
-          (emacs-openclaw--log content nil))))))
+         (state (alist-get 'state payload))
+         (message-content (alist-get 'message payload)))
+    (message "emacs-openclaw: Chat event state=%s" state)
+    ;; Handle the message content if present
+    (when message-content
+      (setq emacs-openclaw--current-message-buffer 
+            (concat emacs-openclaw--current-message-buffer message-content))
+      (emacs-openclaw--log message-content nil))))
 
 (defun emacs-openclaw--websocket-on-close (ws)
   "Handle websocket connection close event."
@@ -433,10 +430,10 @@ The nonce proves we received the server's challenge."
          (msg (json-encode
                `((type . "req")
                  (id . ,req-id)
-                 (method . "chat.completions")
-                 (params . ((messages . (((role . "user") (content . ,prompt))))
-                           (model . "openclaw:main")
-                           (stream . t)))))))
+                 (method . "chat.send")
+                 (params . ((message . ,prompt)
+                           (sessionKey . ,emacs-openclaw-session-key)
+                           (idempotencyKey . ,req-id)))))))
     
     ;; Store callback for this request
     (puthash req-id callback emacs-openclaw--pending-requests)
