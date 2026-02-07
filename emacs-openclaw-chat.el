@@ -80,6 +80,7 @@
   (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow)
   (emacs-openclaw--log "\n" nil)
   (emacs-openclaw--log "OpenClaw: " 'emacs-openclaw-response-face)
+  (emacs-openclaw--log "\n" nil)  ; Start response on new line
   
   (emacs-openclaw--websocket-send-chat 
    prompt

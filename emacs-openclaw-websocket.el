@@ -230,7 +230,7 @@
   (emacs-openclaw--ensure-websocket)
   
   (let* ((req-id (emacs-openclaw--generate-request-id))
-         (session-key (emacs-openclaw--get-session-key))
+         (session-key "emacs-session")  ; Use isolated session for Emacs chat
          (msg (json-encode
                `((type . "req")
                  (id . ,req-id)
