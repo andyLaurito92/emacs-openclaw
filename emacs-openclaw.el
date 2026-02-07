@@ -23,7 +23,11 @@
 (message "emacs-openclaw: Loading server...")
 (require 'emacs-openclaw-server)
 (message "emacs-openclaw: Loading mode...")
-(require 'emacs-openclaw-mode)
+(condition-case err
+    (require 'emacs-openclaw-mode)
+  (error
+   (message "emacs-openclaw: ERROR loading mode module: %s" (error-message-string err))
+   (signal (car err) (cdr err))))
 (message "emacs-openclaw: Mode loaded, checking if emacs-openclaw-mode exists: %s" (fboundp 'emacs-openclaw-mode))
 (message "emacs-openclaw: Loading chat...")
 (require 'emacs-openclaw-chat)
