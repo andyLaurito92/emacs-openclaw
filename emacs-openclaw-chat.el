@@ -108,6 +108,10 @@
 (defun emacs-openclaw-chat ()
   "Open the OpenClaw chat buffer and enable the minor mode."
   (interactive)
+  ;; Ensure mode is loaded
+  (unless (fboundp 'emacs-openclaw-mode)
+    (error "emacs-openclaw-mode not defined. Mode module failed to load. Loaded features: %s" 
+           (delq nil (mapcar (lambda (f) (if (string-match "emacs-openclaw" (symbol-name f)) f)) features))))
   (emacs-openclaw--ensure-server-running)
   (let ((buf (get-buffer-create emacs-openclaw-buffer-name)))
     (with-current-buffer buf
