@@ -51,25 +51,29 @@
     (let* ((payload (alist-get 'payload msg))
            (stream (alist-get 'stream payload))
            (data (alist-get 'data payload))
-           (state (alist-get 'state payload)))
-      (message "emacs-openclaw: Agent event stream=%s data=%s state=%s" stream (when data (type-of data)) state)
-      (message "emacs-openclaw: Full payload: %S" payload)
+           (run-id (alist-get 'runId payload)))
+      (message "emacs-openclaw: Agent event stream=%s" stream)
+      ;; Mark this request as having received agent events
+      (when run-id
+        (puthash run-id t emacs-openclaw--active-requests))
       ;; Handle assistant response stream
-      (when (and (string= stream "assistant") data)
-        (let* ((text (alist-get 'text data))
-               (delta (alist-get 'delta data)))
-          (message "emacs-openclaw: Agent stream text=%s delta=%s" text delta)
-          ;; Use delta if available (incremental), otherwise use full text
-          (let ((content (or delta text)))
-            (when content
-              (message "emacs-openclaw: Logging content: %s" content)
-              (setq emacs-openclaw--current-message-buffer 
-                    (concat emacs-openclaw--current-message-buffer content))
-              (emacs-openclaw--log content nil)))))
-      ;; Add separator when response stream completes
-      (when (string= state "end")
+      (when (string= stream "assistant")
+        (let* ((delta (alist-get 'delta data)))
+          (when delta
+            (message "emacs-openclaw: Logging content: %s" delta)
+            (setq emacs-openclaw--current-message-buffer 
+                  (concat emacs-openclaw--current-message-buffer delta))
+            (emacs-openclaw--log delta nil))))
+      ;; Add separator when lifecycle ends
+      (when (and (string= stream "lifecycle")
+                 (let ((phase (alist-get 'phase data)))
+                   (string= phase "end")))
         (emacs-openclaw--log "\n" nil)
-        (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow)))))
+        (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow)
+        (emacs-openclaw--log "\n" nil)
+        ;; Clean up tracking
+        (when run-id
+          (remhash run-id emacs-openclaw--active-requests))))))
 
 
 ;; ============================================================================
