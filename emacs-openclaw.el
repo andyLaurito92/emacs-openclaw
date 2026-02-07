@@ -308,12 +308,9 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
                   (let ((event-type (alist-get 'event msg)))
                     (message "emacs-openclaw: Got event: %s" event-type)
                     (cond
-                     ;; Streaming agent events
+                     ;; Streaming agent events (assistant responses)
                      ((string= event-type "agent")
-                      (emacs-openclaw--handle-agent-event msg))
-                     ;; Streaming chat event
-                     ((string= event-type "chat")
-                      (emacs-openclaw--handle-chat-event msg)))))
+                      (emacs-openclaw--handle-agent-event msg)))))
                  
                  ;; Other message types
                  (t
