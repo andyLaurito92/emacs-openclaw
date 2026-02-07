@@ -98,8 +98,8 @@
     (let ((msg-text (websocket-frame-text frame)))
       (when msg-text
         (unless (string-empty-p (string-trim msg-text))
-          (let ((preview (substring msg-text 0 (min 80 (length msg-text)))))
-            (message "emacs-openclaw: Processing frame (%d bytes): %s..." (length msg-text) preview))
+          (let ((preview (substring msg-text 0 (min 100 (length msg-text)))))
+            (message "emacs-openclaw: [RAW] Received frame (%d bytes): %s..." (length msg-text) preview)))
           
           (let ((msg nil)
                 (parse-err nil))
@@ -116,9 +116,10 @@
                          (substring msg-text 0 (min 100 (length msg-text))))
               
               (let ((msg-type (alist-get 'type msg))
-                    (msg-id (alist-get 'id msg)))
+                    (msg-id (alist-get 'id msg))
+                    (event-type (alist-get 'event msg)))
                 
-                (message "emacs-openclaw: Parsed message type=%s id=%s" msg-type msg-id)
+                (message "emacs-openclaw: Parsed message type=%s id=%s event=%s" msg-type msg-id event-type)
                 
                 (cond
                  ((and (string= msg-type "res") msg-id)
