@@ -316,11 +316,11 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
                     (cond
                      ;; Streaming agent events (assistant responses)
                      ((string= event-type "agent")
-                      (emacs-openclaw--handle-agent-event msg)))
+                      (emacs-openclaw--handle-agent-event msg)))))
                  
                  ;; Other message types
                  (t
-                  (message "emacs-openclaw: Unknown message type: %s" msg-type))))))
+                  (message "emacs-openclaw: Unknown message type: %s" msg-type)))))))
         
         ;; If msg-text is nil or empty, just silently skip
         )))))
