@@ -361,20 +361,23 @@ The nonce proves we received the server's challenge."
 
 (defun emacs-openclaw--handle-agent-event (msg)
   "Handle an agent streaming event from OpenClaw."
-  (let* ((payload (alist-get 'payload msg))
-         (stream (alist-get 'stream payload))
-         (data (alist-get 'data payload)))
-    (message "emacs-openclaw: Agent event stream=%s" stream)
-    ;; Handle assistant response stream
-    (when (and (string= stream "assistant") data)
-      (let* ((text (alist-get 'text data))
-             (delta (alist-get 'delta data)))
-        ;; Use delta if available (incremental), otherwise use full text
-        (let ((content (or delta text)))
-          (when content
-            (setq emacs-openclaw--current-message-buffer 
-                  (concat emacs-openclaw--current-message-buffer content))
-            (emacs-openclaw--log content nil)))))))
+  (ignore-errors
+    (let* ((payload (alist-get 'payload msg))
+           (stream (alist-get 'stream payload))
+           (data (alist-get 'data payload)))
+      (message "emacs-openclaw: Agent event stream=%s data=%s" stream (when data (type-of data)))
+      ;; Handle assistant response stream
+      (when (and (string= stream "assistant") data)
+        (let* ((text (alist-get 'text data))
+               (delta (alist-get 'delta data)))
+          (message "emacs-openclaw: Agent stream text=%s delta=%s" text delta)
+          ;; Use delta if available (incremental), otherwise use full text
+          (let ((content (or delta text)))
+            (when content
+              (message "emacs-openclaw: Logging content: %s" content)
+              (setq emacs-openclaw--current-message-buffer 
+                    (concat emacs-openclaw--current-message-buffer content))
+              (emacs-openclaw--log content nil)))))))))
 
 (defun emacs-openclaw--handle-chat-event (msg)
   "Handle a chat streaming event from OpenClaw."
