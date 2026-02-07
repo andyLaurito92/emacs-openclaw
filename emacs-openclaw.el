@@ -360,13 +360,17 @@ The nonce proves we received the server's challenge."
   "Handle a chat streaming event from OpenClaw."
   (let* ((payload (alist-get 'payload msg))
          (state (alist-get 'state payload))
-         (message-content (alist-get 'message payload)))
+         (message-obj (alist-get 'message payload)))
     (message "emacs-openclaw: Chat event state=%s" state)
-    ;; Handle the message content if present
-    (when message-content
-      (setq emacs-openclaw--current-message-buffer 
-            (concat emacs-openclaw--current-message-buffer message-content))
-      (emacs-openclaw--log message-content nil))))
+    ;; Extract text from the message object
+    (when message-obj
+      (let* ((content (alist-get 'content message-obj))
+             (first-content (when (listp content) (car content)))
+             (text (when first-content (alist-get 'text first-content))))
+        (when text
+          (setq emacs-openclaw--current-message-buffer 
+                (concat emacs-openclaw--current-message-buffer text))
+          (emacs-openclaw--log text nil))))))
 
 (defun emacs-openclaw--websocket-on-close (ws)
   "Handle websocket connection close event."
