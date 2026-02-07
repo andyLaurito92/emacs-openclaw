@@ -53,6 +53,7 @@
            (data (alist-get 'data payload))
            (state (alist-get 'state payload)))
       (message "emacs-openclaw: Agent event stream=%s data=%s state=%s" stream (when data (type-of data)) state)
+      (message "emacs-openclaw: Full payload: %S" payload)
       ;; Handle assistant response stream
       (when (and (string= stream "assistant") data)
         (let* ((text (alist-get 'text data))
@@ -72,10 +73,11 @@
 
 (defun emacs-openclaw--handle-chat-event (msg)
   "Handle a chat streaming event from OpenClaw."
+  (message "emacs-openclaw: Processing chat event, full msg: %S" msg)
   (let* ((payload (alist-get 'payload msg))
          (state (alist-get 'state payload))
          (message-obj (alist-get 'message payload)))
-    (message "emacs-openclaw: Chat event state=%s" state)
+    (message "emacs-openclaw: Chat event state=%s message-obj=%S" state message-obj)
     ;; Extract text from the message object
     (when message-obj
       (let* ((content (alist-get 'content message-obj))
