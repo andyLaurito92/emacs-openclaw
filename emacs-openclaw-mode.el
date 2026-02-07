@@ -8,16 +8,14 @@
 
 ;;; Code:
 
-;; Forward declare functions from chat module
-(declare-function emacs-openclaw-send-line "emacs-openclaw-chat")
-
 ;; ============================================================================
 ;; Keymap Definition
 ;; ============================================================================
 
 (defvar emacs-openclaw-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "RET") #'emacs-openclaw-send-line)
+    ;; Use symbol reference instead of #' to avoid requiring chat at load time
+    (define-key map (kbd "RET") 'emacs-openclaw-send-line)
     map)
   "Keymap for `emacs-openclaw-mode'.")
 
