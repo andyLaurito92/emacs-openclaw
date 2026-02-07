@@ -67,10 +67,12 @@
   :group 'emacs-openclaw)
 
 (defcustom emacs-openclaw-welcome-message "Welcome to OpenClaw Chat!"
+  "Welcome message displayed when opening the OpenClaw chat buffer."
   :type 'string
   :group 'emacs-openclaw)
 
 (defcustom emacs-openclaw-instructions "Type your message below and press RET to send."
+  "Instructions displayed in the OpenClaw chat buffer."
   :type 'string
   :group 'emacs-openclaw)
 
