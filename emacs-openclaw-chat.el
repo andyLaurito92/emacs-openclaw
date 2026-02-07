@@ -12,13 +12,8 @@
 (require 'emacs-openclaw-websocket)
 (require 'emacs-openclaw-server)
 
-;; Load mode with error reporting
-(condition-case err
-    (require 'emacs-openclaw-mode)
-  (error
-   (message "emacs-openclaw-chat: FATAL ERROR loading emacs-openclaw-mode: %s" (error-message-string err))
-   (backtrace)
-   (signal (car err) (cdr err))))
+;; Load mode module
+(require 'emacs-openclaw-mode)
 
 ;; ============================================================================
 ;; Customization Variables
@@ -116,10 +111,6 @@
 (defun emacs-openclaw-chat ()
   "Open the OpenClaw chat buffer and enable the minor mode."
   (interactive)
-  ;; Ensure mode is loaded
-  (unless (fboundp 'emacs-openclaw-mode)
-    (error "emacs-openclaw-mode not defined. Mode module failed to load. Loaded features: %s" 
-           (delq nil (mapcar (lambda (f) (if (string-match "emacs-openclaw" (symbol-name f)) f)) features))))
   (emacs-openclaw--ensure-server-running)
   (let ((buf (get-buffer-create emacs-openclaw-buffer-name)))
     (with-current-buffer buf

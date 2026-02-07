@@ -13,25 +13,11 @@
 ;; streaming chat responses. Configuration is automatically detected from
 ;; ~/.openclaw/openclaw.json (gateway token and port).
 
-;;; Code:
-
-;; Load submodules in dependency order
-(message "emacs-openclaw: Loading config...")
 (require 'emacs-openclaw-config)
-(message "emacs-openclaw: Loading websocket...")
 (require 'emacs-openclaw-websocket)
-(message "emacs-openclaw: Loading server...")
 (require 'emacs-openclaw-server)
-(message "emacs-openclaw: Loading mode...")
-(condition-case err
-    (require 'emacs-openclaw-mode)
-  (error
-   (message "emacs-openclaw: ERROR loading mode module: %s" (error-message-string err))
-   (signal (car err) (cdr err))))
-(message "emacs-openclaw: Mode loaded, checking if emacs-openclaw-mode exists: %s" (fboundp 'emacs-openclaw-mode))
-(message "emacs-openclaw: Loading chat...")
+(require 'emacs-openclaw-mode)
 (require 'emacs-openclaw-chat)
-(message "emacs-openclaw: All modules loaded!")
 
 ;; Public API is re-exported from submodules via require statements above.
 ;; No need for defalias — the submodules define the actual functions.
