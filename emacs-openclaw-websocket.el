@@ -52,7 +52,7 @@
            (stream (alist-get 'stream payload))
            (data (alist-get 'data payload))
            (run-id (alist-get 'runId payload)))
-      (message "emacs-openclaw: Agent event stream=%s" stream)
+      (message "emacs-openclaw: Agent event stream=%s data=%S" stream data)
       ;; Mark this request as having received agent events
       (when run-id
         (puthash run-id t emacs-openclaw--active-requests))
