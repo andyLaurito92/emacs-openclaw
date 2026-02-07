@@ -108,6 +108,8 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
   "Whether the websocket is currently connected.")
 (defvar emacs-openclaw--request-id-counter 0
   "Counter for generating unique request IDs.")
+(defvar emacs-openclaw--challenge-nonce nil
+  "The nonce received from server's connect.challenge event.")
 (defvar emacs-openclaw--pending-requests (make-hash-table :test 'equal)
   "Hash table mapping request IDs to response handlers.")
 (defvar emacs-openclaw--current-message-buffer ""
@@ -322,17 +324,41 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
 
 (defun emacs-openclaw--handle-connect-challenge (msg)
   "Handle connect.challenge event from server.
-The server sends a nonce that we must echo back to prove authentication."
+The server sends a nonce that we must include in a follow-up connect request."
   (let* ((payload (alist-get 'payload msg))
          (nonce (alist-get 'nonce payload)))
     (when nonce
       (message "emacs-openclaw: Received challenge nonce: %s" nonce)
-      (let ((challenge-response (json-encode
-                                 `((type . "event")
-                                   (event . "connect.challenge")
-                                   (payload . ((nonce . ,nonce)))))))
-        (websocket-send-text emacs-openclaw--websocket challenge-response)
-        (message "emacs-openclaw: Sent challenge response")))))
+      (setq emacs-openclaw--challenge-nonce nonce)
+      ;; Send another connect request with the nonce included
+      (emacs-openclaw--send-connect-with-nonce nonce))))
+
+(defun emacs-openclaw--send-connect-with-nonce (nonce)
+  "Send a connect request with the challenge nonce.
+The nonce proves we received the server's challenge."
+  (let* ((config (emacs-openclaw--ensure-config))
+         (token (plist-get config :token))
+         (connect-msg (json-encode
+                       `((type . "req")
+                         (id . ,(emacs-openclaw--generate-request-id))
+                         (method . "connect")
+                         (params . ((minProtocol . 3)
+                                   (maxProtocol . 3)
+                                   (client . ((id . "cli")
+                                             (displayName . "Emacs OpenClaw")
+                                             (version . "0.1.0")
+                                             (platform . "emacs")
+                                             (mode . "cli")))
+                                   (role . "operator")
+                                   (scopes . ["operator.read" "operator.write"])
+                                   (caps . [])
+                                   (commands . [])
+                                   (auth . ((token . ,token)))
+                                   (device . ((nonce . ,nonce)))
+                                   (locale . "en-US")
+                                   (userAgent . "emacs-openclaw/0.1.0")))))))
+    (websocket-send-text emacs-openclaw--websocket connect-msg)
+    (message "emacs-openclaw: Sent connect request with challenge nonce")))
 
 (defun emacs-openclaw--handle-chat-delta (msg)
   "Handle a chat.delta streaming event."
