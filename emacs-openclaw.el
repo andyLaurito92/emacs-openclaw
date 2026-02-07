@@ -15,12 +15,12 @@
 
 ;;; Code:
 
-;; Load submodules
+;; Load submodules in dependency order
 (require 'emacs-openclaw-config)
 (require 'emacs-openclaw-websocket)
-(require 'emacs-openclaw-chat)
 (require 'emacs-openclaw-server)
-(require 'emacs-openclaw-mode)
+(require 'emacs-openclaw-mode)    ; Load mode BEFORE chat (chat uses it)
+(require 'emacs-openclaw-chat)
 
 ;; Public API is re-exported from submodules via require statements above.
 ;; No need for defalias — the submodules define the actual functions.

@@ -12,9 +12,6 @@
 (require 'emacs-openclaw-websocket)
 (require 'emacs-openclaw-server)
 
-;; Forward declare emacs-openclaw-mode (defined in emacs-openclaw-mode.el)
-(declare-function emacs-openclaw-mode "emacs-openclaw-mode")
-
 ;; ============================================================================
 ;; Customization Variables
 ;; ============================================================================

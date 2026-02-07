@@ -8,7 +8,8 @@
 
 ;;; Code:
 
-(require 'emacs-openclaw-chat)
+;; Forward declare functions from chat module
+(declare-function emacs-openclaw-send-line "emacs-openclaw-chat")
 
 ;; ============================================================================
 ;; Minor Mode Definition
