@@ -316,7 +316,7 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
                     (cond
                      ;; Streaming agent events (assistant responses)
                      ((string= event-type "agent")
-                      (emacs-openclaw--handle-agent-event msg)))))
+                      (emacs-openclaw--handle-agent-event msg)))
                  
                  ;; Other message types
                  (t
