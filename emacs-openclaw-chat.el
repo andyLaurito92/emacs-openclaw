@@ -12,6 +12,14 @@
 (require 'emacs-openclaw-websocket)
 (require 'emacs-openclaw-server)
 
+;; Load mode with error reporting
+(condition-case err
+    (require 'emacs-openclaw-mode)
+  (error
+   (message "emacs-openclaw-chat: FATAL ERROR loading emacs-openclaw-mode: %s" (error-message-string err))
+   (backtrace)
+   (signal (car err) (cdr err))))
+
 ;; ============================================================================
 ;; Customization Variables
 ;; ============================================================================
