@@ -239,7 +239,7 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
                                              (platform . "emacs")
                                              (mode . "cli")))
                                    (role . "operator")
-                                   (scopes . ["operator.read" "operator.write"])
+                                   (scopes . ["operator.admin"])
                                    (caps . [])
                                    (commands . [])
                                    (auth . ((token . ,token)))
