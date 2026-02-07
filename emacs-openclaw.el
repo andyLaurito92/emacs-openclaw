@@ -652,8 +652,7 @@ The nonce proves we received the server's challenge."
                               'face '(:foreground "yellow" :weight bold)))
           (insert (propertize (concat emacs-openclaw-message-separator "\n")
                               'face 'shadow))
-          (insert (concat "\n" emacs-openclaw-instructions "\n\n"))
-          (insert (propertize "You: " 'face 'emacs-openclaw-user-face)))))
+          (insert (concat "\n" emacs-openclaw-instructions "\n\n")))))
     (pop-to-buffer buf)))
 
 ;;;###autoload
