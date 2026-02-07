@@ -458,6 +458,7 @@ The nonce proves we received the server's challenge."
                  (method . "agent")
                  (params . ((sessionKey . ,emacs-openclaw-session-key)
                            (message . ,prompt)
+                           (idempotencyKey . ,req-id)
                            (deliver . :json-false)))))))
     
     (message "emacs-openclaw: Sending agent request id=%s session=%s msg=%s" req-id emacs-openclaw-session-key prompt)
