@@ -301,12 +301,17 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
                       (funcall handler msg)
                       (remhash msg-id emacs-openclaw--pending-requests))))
                  
-                 ;; Streaming event (chat.delta)
+                 ;; Handle connect.challenge event (authentication nonce)
                  ((string= msg-type "event")
                   (let ((event-type (alist-get 'event msg)))
                     (message "emacs-openclaw: Got event: %s" event-type)
-                    (when (string= event-type "chat.delta")
-                      (emacs-openclaw--handle-chat-delta msg))))
+                    (cond
+                     ;; Challenge response required
+                     ((string= event-type "connect.challenge")
+                      (emacs-openclaw--handle-connect-challenge msg))
+                     ;; Streaming chat delta
+                     ((string= event-type "chat.delta")
+                      (emacs-openclaw--handle-chat-delta msg)))))
                  
                  ;; Other message types
                  (t
@@ -314,6 +319,21 @@ If nil, will attempt to load from ~/.openclaw/openclaw.json."
         
         ;; If msg-text is nil or empty, just silently skip
         )))))
+
+(defun emacs-openclaw--handle-connect-challenge (msg)
+  "Handle connect.challenge event from server.
+The server sends a nonce that we must echo back to prove authentication."
+  (let* ((payload (alist-get 'payload msg))
+         (nonce (alist-get 'nonce payload)))
+    (when nonce
+      (message "emacs-openclaw: Received challenge nonce: %s" nonce)
+      (let ((challenge-response (json-encode
+                                 `((type . "res")
+                                   (id . nil)
+                                   (method . "connect.challenge")
+                                   (params . ((nonce . ,nonce)))))))
+        (websocket-send-text emacs-openclaw--websocket challenge-response)
+        (message "emacs-openclaw: Sent challenge response")))))
 
 (defun emacs-openclaw--handle-chat-delta (msg)
   "Handle a chat.delta streaming event."
