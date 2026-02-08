@@ -1,14 +1,5 @@
 ;;; emacs-openclaw-websocket.el --- WebSocket connection and protocol handling -*- lexical-binding: t; -*-
 
-;; Author: Andres Laurito <andy.laurito@gmail.com>
-;; Version: 0.1.0
-
-;;; Commentary:
-;; Manages WebSocket connection to OpenClaw gateway, message parsing,
-;; and event routing.
-
-;;; Code:
-
 (require 'json)
 (require 'websocket)
 (require 'emacs-openclaw-config)
@@ -17,241 +8,150 @@
 ;; Internal Variables
 ;; ============================================================================
 
-(defvar emacs-openclaw--websocket nil
-  "The websocket connection to OpenClaw gateway.")
+(defvar emacs-openclaw--websocket nil)
+(defvar emacs-openclaw--websocket-connected nil)
+(defvar emacs-openclaw--request-id-counter 0)
 
-(defvar emacs-openclaw--websocket-connected nil
-  "Whether the websocket is currently connected.")
+(defvar emacs-openclaw--pending-requests (make-hash-table :test 'equal))
+(defvar emacs-openclaw--current-message-buffer "")
 
-(defvar emacs-openclaw--request-id-counter 0
-  "Counter for generating unique request IDs.")
+;; 🔒 Session isolation
+(defvar emacs-openclaw--session-key nil
+  "Session key used by this Emacs instance.")
 
-(defvar emacs-openclaw--pending-requests (make-hash-table :test 'equal)
-  "Hash table mapping request IDs to response handlers.")
-
-(defvar emacs-openclaw--current-message-buffer ""
-  "Buffer for accumulating streaming message content.")
+(defun emacs-openclaw--ensure-session-key ()
+  (unless emacs-openclaw--session-key
+    (setq emacs-openclaw--session-key
+          (format "emacs:%s:%d"
+                  (system-name)
+                  (emacs-pid)))
+    (message "emacs-openclaw: Using session %s" emacs-openclaw--session-key)))
 
 ;; ============================================================================
-;; Request ID Generation
+;; Request ID
 ;; ============================================================================
 
 (defun emacs-openclaw--generate-request-id ()
-  "Generate a unique request ID."
   (setq emacs-openclaw--request-id-counter (1+ emacs-openclaw--request-id-counter))
   (format "emacs-req-%d" emacs-openclaw--request-id-counter))
 
 ;; ============================================================================
-;; Event Handlers
+;; Agent Event Handling
 ;; ============================================================================
 
 (defun emacs-openclaw--handle-agent-event (msg)
-  "Handle an agent streaming event from OpenClaw."
   (ignore-errors
     (let* ((payload (alist-get 'payload msg))
-           (stream (alist-get 'stream payload))
-           (data (alist-get 'data payload))
-           (run-id (alist-get 'runId payload)))
-      (message "emacs-openclaw: Agent event stream=%s data=%S" stream data)
-      ;; Mark this request as having received agent events
-      (when run-id
-        (puthash run-id t emacs-openclaw--active-requests))
-      ;; Handle assistant response stream
-      (when (string= stream "assistant")
-        (let* ((delta (alist-get 'delta data)))
-          (when delta
-            (message "emacs-openclaw: Logging content: %s" delta)
-            (setq emacs-openclaw--current-message-buffer 
-                  (concat emacs-openclaw--current-message-buffer delta))
-            (emacs-openclaw--log delta nil))))
-      ;; Add separator when lifecycle ends
-      (when (and (string= stream "lifecycle")
-                 (let ((phase (alist-get 'phase data)))
-                   (string= phase "end")))
-        (emacs-openclaw--log "\n" nil)
-        (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow)
-        (emacs-openclaw--log "\n" nil)
-        ;; Clean up tracking
-        (when run-id
-          (remhash run-id emacs-openclaw--active-requests))))))
+           (session-key (alist-get 'sessionKey payload)))
 
+      ;; 🔴 Ignore events from other sessions
+      (when (and session-key
+                 (not (equal session-key emacs-openclaw--session-key)))
+        (cl-return-from emacs-openclaw--handle-agent-event))
+
+      (let* ((stream (alist-get 'stream payload))
+             (data (alist-get 'data payload))
+             (run-id (alist-get 'runId payload)))
+
+        (when (string= stream "assistant")
+          (let ((delta (alist-get 'delta data)))
+            (when delta
+              (setq emacs-openclaw--current-message-buffer
+                    (concat emacs-openclaw--current-message-buffer delta))
+              (emacs-openclaw--log delta nil))))
+
+        (when (and (string= stream "lifecycle")
+                   (string= (alist-get 'phase data) "end"))
+          (emacs-openclaw--log "\n" nil)
+          (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow)
+          (emacs-openclaw--log "\n" nil))))))
 
 ;; ============================================================================
 ;; WebSocket Message Handler
 ;; ============================================================================
 
-(defun emacs-openclaw--websocket-on-message (ws frame)
-  "Handle incoming websocket messages."
+(defun emacs-openclaw--websocket-on-message (_ws frame)
   (ignore-errors
     (let ((msg-text (websocket-frame-text frame)))
-      (when msg-text
-        (unless (string-empty-p (string-trim msg-text))
-          (let ((preview (substring msg-text 0 (min 100 (length msg-text)))))
-            (message "emacs-openclaw: [RAW] Received frame (%d bytes): %s..." (length msg-text) preview))
-          
-          (let ((msg nil)
-                (parse-err nil))
-            (condition-case err
-                (let ((json-object-type 'alist)
-                      (json-array-type 'list))
-                  (setq msg (json-read-from-string msg-text)))
-              (error
-               (setq parse-err err)))
-            
-            (if parse-err
-                (message "emacs-openclaw: Failed to parse JSON: %s. Text: %s" 
-                         parse-err
-                         (substring msg-text 0 (min 100 (length msg-text))))
-              
-              (let ((msg-type (alist-get 'type msg))
-                    (msg-id (alist-get 'id msg))
-                    (event-type (alist-get 'event msg)))
-                
-                (message "emacs-openclaw: Parsed message type=%s id=%s event=%s" msg-type msg-id event-type)
-                
-                (cond
-                 ((and (string= msg-type "res") msg-id)
-                  (message "emacs-openclaw: Got response to request %s" msg-id)
-                  (let ((ok (alist-get 'ok msg)))
-                    (if ok
-                        (progn
-                          ;; Extract and cache the session key from hello-ok response
-                          (let* ((payload (alist-get 'payload msg))
-                                 (snapshot (alist-get 'snapshot payload))
-                                 (session-defaults (alist-get 'sessionDefaults snapshot))
-                                 (main-session-key (alist-get 'mainSessionKey session-defaults)))
-                            (when main-session-key
-                              (setq emacs-openclaw--session-key-cache main-session-key)
-                              (message "emacs-openclaw: Detected main session key: %s" main-session-key)))
-                          (setq emacs-openclaw--websocket-connected t)
-                          (message "emacs-openclaw: WebSocket connected and authenticated"))
-                      (let ((error-msg (alist-get 'error msg)))
-                        (message "emacs-openclaw: Connection error: %S" error-msg))))
-                  (let ((handler (gethash msg-id emacs-openclaw--pending-requests)))
-                    (when handler
-                      (message "emacs-openclaw: Calling handler for %s" msg-id)
-                      (funcall handler msg)
-                      (remhash msg-id emacs-openclaw--pending-requests))))
-                 
-                 ((string= msg-type "event")
-                  (let ((event-type (alist-get 'event msg)))
-                    (message "emacs-openclaw: Got event: %s" event-type)
-                    (cond
-                     ((string= event-type "agent")
-                      (message "emacs-openclaw: Processing agent event")
-                      (emacs-openclaw--handle-agent-event msg)))))
-                 
-                 (t
-                  (message "emacs-openclaw: Unknown message type: %s" msg-type)))))))))))
+      (when (and msg-text (not (string-empty-p (string-trim msg-text))))
+        (let ((json-object-type 'alist)
+              (json-array-type 'list))
+          (let* ((msg (json-read-from-string msg-text))
+                 (type (alist-get 'type msg))
+                 (id (alist-get 'id msg)))
+            (cond
+             ((and (string= type "res") id)
+              (when-let ((handler (gethash id emacs-openclaw--pending-requests)))
+                (funcall handler msg)
+                (remhash id emacs-openclaw--pending-requests))
+              (setq emacs-openclaw--websocket-connected t))
+
+             ((string= type "event")
+              (when (string= (alist-get 'event msg) "agent")
+                (emacs-openclaw--handle-agent-event msg)))))))))
 
 ;; ============================================================================
 ;; WebSocket Lifecycle
 ;; ============================================================================
 
 (defun emacs-openclaw--websocket-on-open (ws)
-  "Handle websocket connection open event."
-  (message "emacs-openclaw: WebSocket connection opened, sending handshake...")
   (let* ((token (emacs-openclaw--get-token))
-         (connect-msg (json-encode
-                       `((type . "req")
-                         (id . ,(emacs-openclaw--generate-request-id))
-                         (method . "connect")
-                         (params . ((minProtocol . 3)
-                                   (maxProtocol . 3)
-                                   (client . ((id . "cli")
-                                             (displayName . "Emacs OpenClaw")
-                                             (version . "0.1.0")
-                                             (platform . "emacs")
-                                             (mode . "cli")))
-                                   (role . "operator")
-                                   (scopes . ["operator.admin"])
-                                   (caps . [])
-                                   (commands . [])
-                                   (auth . ((token . ,token)))
-                                   (locale . "en-US")
-                                   (userAgent . "emacs-openclaw/0.1.0")))))))
-    (websocket-send-text ws connect-msg)))
+         (msg (json-encode
+               `((type . "req")
+                 (id . ,(emacs-openclaw--generate-request-id))
+                 (method . "connect")
+                 (params . ((minProtocol . 3)
+                            (maxProtocol . 3)
+                            (client . ((id . "cli")
+                                       (displayName . "Emacs OpenClaw")
+                                       (version . "0.1.0")
+                                       (platform . "emacs")))
+                            (role . "operator")
+                            (scopes . ["operator.admin"])
+                            (auth . ((token . ,token)))))))))
+    (websocket-send-text ws msg)))
 
-(defun emacs-openclaw--websocket-on-close (ws)
-  "Handle websocket connection close event."
-  (setq emacs-openclaw--websocket-connected nil)
-  (setq emacs-openclaw--websocket nil)
-  (message "emacs-openclaw: WebSocket connection closed"))
-
-(defun emacs-openclaw--websocket-on-error (ws type err)
-  "Handle websocket errors."
-  (message "emacs-openclaw: WebSocket error: %s - %s" type err))
+(defun emacs-openclaw--websocket-on-close (_ws)
+  (setq emacs-openclaw--websocket-connected nil
+        emacs-openclaw--websocket nil)
+  (message "emacs-openclaw: WebSocket closed"))
 
 (defun emacs-openclaw--connect-websocket ()
-  "Connect to OpenClaw gateway via websocket."
-  (when (and emacs-openclaw--websocket 
-             (websocket-openp emacs-openclaw--websocket))
-    (websocket-close emacs-openclaw--websocket))
-  
   (let* ((config (emacs-openclaw--ensure-config))
          (port (plist-get config :port))
          (url (format "ws://127.0.0.1:%d" port)))
-    
-    (message "emacs-openclaw: Connecting to %s..." url)
-    (setq emacs-openclaw--websocket-connected nil)
     (setq emacs-openclaw--websocket
           (websocket-open
            url
            :on-open #'emacs-openclaw--websocket-on-open
            :on-message #'emacs-openclaw--websocket-on-message
-           :on-close #'emacs-openclaw--websocket-on-close
-           :on-error #'emacs-openclaw--websocket-on-error))))
+           :on-close #'emacs-openclaw--websocket-on-close))))
 
 (defun emacs-openclaw--ensure-websocket ()
-  "Ensure websocket connection is established."
   (unless (and emacs-openclaw--websocket emacs-openclaw--websocket-connected)
     (emacs-openclaw--connect-websocket)
-    (let ((retries (floor (/ emacs-openclaw-websocket-timeout 0.2))))
-      (while (and (> retries 0) 
-                  (not emacs-openclaw--websocket-connected))
-        (accept-process-output nil 0.2)
-        (setq retries (1- retries)))
-      (unless emacs-openclaw--websocket-connected
-        (error "Failed to establish websocket connection to OpenClaw gateway")))))
-
-;;;###autoload
-(defun emacs-openclaw-disconnect ()
-  "Disconnect from OpenClaw gateway."
-  (interactive)
-  (when (and emacs-openclaw--websocket 
-             (websocket-openp emacs-openclaw--websocket))
-    (websocket-close emacs-openclaw--websocket)
-    (setq emacs-openclaw--websocket nil)
-    (setq emacs-openclaw--websocket-connected nil)
-    (message "emacs-openclaw: Disconnected from gateway")))
+    (accept-process-output nil 0.5)))
 
 ;; ============================================================================
-;; Chat Request Sending
+;; Chat Sending
 ;; ============================================================================
 
 (defun emacs-openclaw--websocket-send-chat (prompt callback)
-  "Send a message request via the agent method."
   (emacs-openclaw--ensure-websocket)
-  
+  (emacs-openclaw--ensure-session-key)
+
   (let* ((req-id (emacs-openclaw--generate-request-id))
-         (session-key "emacs-session")  ; Use isolated session for Emacs chat
          (msg (json-encode
                `((type . "req")
                  (id . ,req-id)
                  (method . "agent")
-                 (params . ((sessionKey . ,session-key)
-                           (message . ,prompt)
-                           (idempotencyKey . ,req-id)
-                           (deliver . :json-false)))))))
-    
-    (message "emacs-openclaw: Sending agent request id=%s session=%s msg=%s" req-id session-key prompt)
-    
+                 (params . ((sessionKey . ,emacs-openclaw--session-key)
+                            (message . ,prompt)
+                            (idempotencyKey . ,req-id)))))))
     (puthash req-id callback emacs-openclaw--pending-requests)
     (setq emacs-openclaw--current-message-buffer "")
     (websocket-send-text emacs-openclaw--websocket msg)))
 
-;; Forward declare for use in event handlers
 (declare-function emacs-openclaw--log "emacs-openclaw-chat")
 
 (provide 'emacs-openclaw-websocket)
-;;; emacs-openclaw-websocket.el ends here
