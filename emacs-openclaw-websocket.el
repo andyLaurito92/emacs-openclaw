@@ -95,21 +95,29 @@
 ;; ============================================================================
 
 (defun emacs-openclaw--websocket-on-open (ws)
+  "Handle websocket connection open event."
+  (message "emacs-openclaw: WebSocket connection opened, sending handshake...")
   (let* ((token (emacs-openclaw--get-token))
-         (msg (json-encode
-               `((type . "req")
-                 (id . ,(emacs-openclaw--generate-request-id))
-                 (method . "connect")
-                 (params . ((minProtocol . 3)
-                            (maxProtocol . 3)
-                            (client . ((id . "cli")
-                                       (displayName . "Emacs OpenClaw")
-                                       (version . "0.1.0")
-                                       (platform . "emacs")))
-                            (role . "operator")
-                            (scopes . ["operator.admin"])
-                            (auth . ((token . ,token)))))))))
-    (websocket-send-text ws msg)))
+         (connect-msg
+          (json-encode
+           `((type . "req")
+             (id . ,(emacs-openclaw--generate-request-id))
+             (method . "connect")
+             (params . ((minProtocol . 3)
+                        (maxProtocol . 3)
+                        (client . ((id . "cli")
+                                   (displayName . "Emacs OpenClaw")
+                                   (version . "0.1.0")
+                                   (platform . "emacs")
+                                   (mode . "cli")))
+                        (role . "operator")
+                        (scopes . ["operator.admin"])
+                        (caps . [])
+                        (commands . [])
+                        (auth . ((token . ,token)))
+                        (locale . "en-US")
+                        (userAgent . "emacs-openclaw/0.1.0")))))))
+    (websocket-send-text ws connect-msg)))
 
 (defun emacs-openclaw--websocket-on-close (_ws)
   (setq emacs-openclaw--websocket-connected nil
