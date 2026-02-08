@@ -88,7 +88,7 @@
 
              ((string= type "event")
               (when (string= (alist-get 'event msg) "agent")
-                (emacs-openclaw--handle-agent-event msg)))))))))
+                (emacs-openclaw--handle-agent-event msg))))))))))
 
 ;; ============================================================================
 ;; WebSocket Lifecycle
