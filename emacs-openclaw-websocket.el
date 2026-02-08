@@ -79,22 +79,21 @@
                  (type (alist-get 'type msg))
                  (method (alist-get 'method msg))
                  (id (alist-get 'id msg)))
-
             (cond
-             ;; ✅ Connect ACK
+             ;; ✅ connect ACK
              ((and (string= type "res")
                    (string= method "connect")
                    (alist-get 'ok msg))
               (setq emacs-openclaw--websocket-connected t)
               (message "emacs-openclaw: WebSocket handshake complete"))
 
-             ;; Other responses
+             ;; other responses
              ((and (string= type "res") id)
               (when-let ((handler (gethash id emacs-openclaw--pending-requests)))
                 (funcall handler msg)
                 (remhash id emacs-openclaw--pending-requests)))
 
-             ;; Agent events
+             ;; agent events
              ((and (string= type "event")
                    (string= (alist-get 'event msg) "agent"))
               (emacs-openclaw--handle-agent-event msg)))))))))
@@ -114,12 +113,13 @@
              (method . "connect")
              (params . ((minProtocol . 3)
                         (maxProtocol . 3)
-                        ;; 🔴 REQUIRED HERE
+                        ;; REQUIRED in BOTH places
                         (mode . "cli")
                         (client . ((id . "cli")
                                    (displayName . "Emacs OpenClaw")
                                    (version . "0.1.0")
-                                   (platform . "emacs")))
+                                   (platform . "emacs")
+                                   (mode . "cli")))
                         (role . "operator")
                         (scopes . ["operator.admin"])
                         (caps . [])
