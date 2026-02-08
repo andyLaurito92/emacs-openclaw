@@ -3,6 +3,7 @@
 (require 'json)
 (require 'websocket)
 (require 'emacs-openclaw-config)
+(require 'cl-lib)
 
 ;; ============================================================================
 ;; Internal Variables
@@ -44,21 +45,19 @@
     (let* ((payload (alist-get 'payload msg))
            (session-key (alist-get 'sessionKey payload)))
 
-      ;; 🔴 Ignore events from other sessions
+      ;; Ignore events from other sessions
       (when (and session-key
                  (not (equal session-key emacs-openclaw--session-key)))
         (cl-return-from emacs-openclaw--handle-agent-event))
 
       (let* ((stream (alist-get 'stream payload))
-             (data (alist-get 'data payload))
-             (run-id (alist-get 'runId payload)))
+             (data (alist-get 'data payload)))
 
         (when (string= stream "assistant")
-          (let ((delta (alist-get 'delta data)))
-            (when delta
-              (setq emacs-openclaw--current-message-buffer
-                    (concat emacs-openclaw--current-message-buffer delta))
-              (emacs-openclaw--log delta nil))))
+          (when-let ((delta (alist-get 'delta data)))
+            (setq emacs-openclaw--current-message-buffer
+                  (concat emacs-openclaw--current-message-buffer delta))
+            (emacs-openclaw--log delta nil)))
 
         (when (and (string= stream "lifecycle")
                    (string= (alist-get 'phase data) "end"))
@@ -78,17 +77,27 @@
               (json-array-type 'list))
           (let* ((msg (json-read-from-string msg-text))
                  (type (alist-get 'type msg))
+                 (method (alist-get 'method msg))
                  (id (alist-get 'id msg)))
+
             (cond
+             ;; ✅ Connect ACK
+             ((and (string= type "res")
+                   (string= method "connect")
+                   (alist-get 'ok msg))
+              (setq emacs-openclaw--websocket-connected t)
+              (message "emacs-openclaw: WebSocket handshake complete"))
+
+             ;; Other responses
              ((and (string= type "res") id)
               (when-let ((handler (gethash id emacs-openclaw--pending-requests)))
                 (funcall handler msg)
-                (remhash id emacs-openclaw--pending-requests))
-              (setq emacs-openclaw--websocket-connected t))
+                (remhash id emacs-openclaw--pending-requests)))
 
-             ((string= type "event")
-              (when (string= (alist-get 'event msg) "agent")
-                (emacs-openclaw--handle-agent-event msg))))))))))
+             ;; Agent events
+             ((and (string= type "event")
+                   (string= (alist-get 'event msg) "agent"))
+              (emacs-openclaw--handle-agent-event msg)))))))))
 
 ;; ============================================================================
 ;; WebSocket Lifecycle
@@ -105,11 +114,12 @@
              (method . "connect")
              (params . ((minProtocol . 3)
                         (maxProtocol . 3)
+                        ;; 🔴 REQUIRED HERE
+                        (mode . "cli")
                         (client . ((id . "cli")
                                    (displayName . "Emacs OpenClaw")
                                    (version . "0.1.0")
-                                   (platform . "emacs")
-                                   (mode . "cli")))
+                                   (platform . "emacs")))
                         (role . "operator")
                         (scopes . ["operator.admin"])
                         (caps . [])
@@ -128,6 +138,7 @@
   (let* ((config (emacs-openclaw--ensure-config))
          (port (plist-get config :port))
          (url (format "ws://127.0.0.1:%d" port)))
+    (setq emacs-openclaw--websocket-connected nil)
     (setq emacs-openclaw--websocket
           (websocket-open
            url
@@ -136,9 +147,16 @@
            :on-close #'emacs-openclaw--websocket-on-close))))
 
 (defun emacs-openclaw--ensure-websocket ()
-  (unless (and emacs-openclaw--websocket emacs-openclaw--websocket-connected)
+  (unless (and emacs-openclaw--websocket
+               emacs-openclaw--websocket-connected)
     (emacs-openclaw--connect-websocket)
-    (accept-process-output nil 0.5)))
+    (let ((retries 25))
+      (while (and (> retries 0)
+                  (not emacs-openclaw--websocket-connected))
+        (accept-process-output nil 0.2)
+        (setq retries (1- retries)))
+      (unless emacs-openclaw--websocket-connected
+        (error "OpenClaw handshake did not complete")))))
 
 ;; ============================================================================
 ;; Chat Sending
@@ -163,3 +181,4 @@
 (declare-function emacs-openclaw--log "emacs-openclaw-chat")
 
 (provide 'emacs-openclaw-websocket)
+;;; emacs-openclaw-websocket.el ends here
