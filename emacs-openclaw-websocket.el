@@ -61,11 +61,11 @@
            `((type . "req")
              (id . ,(emacs-openclaw--generate-request-id))
              (method . "connect")
-             (params
-              ((nonce . ,emacs-openclaw--connect-nonce)
+             (params . (
+               (nonce . ,emacs-openclaw--connect-nonce)
                (minProtocol . 3)
                (maxProtocol . 3)
-               (client . ((id . "cli")               ;; ← REQUIRED CONSTANT
+               (client . ((id . "cli")
                           (displayName . "Emacs OpenClaw")
                           (version . "0.1.0")
                           (platform . "emacs")
