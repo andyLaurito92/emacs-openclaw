@@ -55,29 +55,33 @@
 ;; ----------------------------------------------------------------------------
 
 (defun emacs-openclaw--send-connect ()
-  (let* ((token (emacs-openclaw--get-token))
-         (msg
-          (json-encode
-           `((type . "req")
-             (id . ,(emacs-openclaw--generate-request-id))
-             (method . "connect")
-             (params . (
-               (nonce . ,emacs-openclaw--connect-nonce)
-               (minProtocol . 3)
-               (maxProtocol . 3)
-               (client . ((id . "cli")
-                          (displayName . "Emacs OpenClaw")
-                          (version . "0.1.0")
-                          (platform . "emacs")
-                          (mode . "cli")))
-               (role . "operator")
-               (scopes . ["operator.admin"])
-               (caps . [])
-               (commands . [])
-               (auth . ((token . ,token)))
-               (locale . "en-US")
-               (userAgent . "emacs-openclaw/0.1.0")))))))
-    (websocket-send-text emacs-openclaw--websocket msg)))
+  "Send WebSocket connect frame to OpenClaw."
+  (let ((token (emacs-openclaw--get-token))
+        (req-id (emacs-openclaw--generate-request-id)))
+    (websocket-send-text
+     emacs-openclaw--websocket
+     (json-encode
+      `((type . "req")
+        (id . ,req-id)
+        (method . "connect")
+        (params . (
+                   (minProtocol . 3)
+                   (maxProtocol . 3)
+                   (client . (
+                              (id . "cli")             ;; must be valid client id
+                              (displayName . "Emacs OpenClaw")
+                              (version . "0.1.0")
+                              (platform . "emacs")
+                              (mode . "cli")           ;; must match schema
+                              ))
+                   (role . "operator")
+                   (scopes . ["operator.admin"])
+                   (caps . [])
+                   (commands . [])
+                   (auth . ((token . ,token)))
+                   (locale . "en-US")
+                   (userAgent . "emacs-openclaw/0.1.0")
+                   )))))))
 
 (defun emacs-openclaw--websocket-on-open (_ws)
   (message "emacs-openclaw: WebSocket opened, waiting for challenge…"))
