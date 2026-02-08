@@ -24,6 +24,35 @@
   (setq emacs-openclaw--request-id-counter (1+ emacs-openclaw--request-id-counter))
   (format "emacs-req-%d" emacs-openclaw--request-id-counter))
 
+;; ============================================================================
+;; Agent Event Handling
+;; ============================================================================
+
+(defun emacs-openclaw--handle-agent-event (msg)
+  (ignore-errors
+    (let* ((payload (alist-get 'payload msg))
+           (session-key (alist-get 'sessionKey payload)))
+
+      ;; Ignore other sessions
+      (when (and session-key
+                 (not (equal session-key emacs-openclaw--session-key)))
+        (cl-return-from emacs-openclaw--handle-agent-event))
+
+      (let ((stream (alist-get 'stream payload))
+            (data (alist-get 'data payload)))
+        (cond
+         ((string= stream "assistant")
+          (when-let ((delta (alist-get 'delta data)))
+            (setq emacs-openclaw--current-message-buffer
+                  (concat emacs-openclaw--current-message-buffer delta))
+            (emacs-openclaw--log delta nil)))
+
+         ((and (string= stream "lifecycle")
+               (string= (alist-get 'phase data) "end"))
+          (emacs-openclaw--log "\n" nil)
+          (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow)
+          (emacs-openclaw--log "\n" nil)))))))
+
 ;; ----------------------------------------------------------------------------
 ;; Message handling
 ;; ----------------------------------------------------------------------------
