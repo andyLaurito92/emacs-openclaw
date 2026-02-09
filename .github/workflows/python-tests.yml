@@ -3,9 +3,6 @@ name: Python Server Tests
 on:
   push:
     branches: [main]
-    paths:
-      - 'server/**'
-      - '.github/workflows/python-tests.yml'
   pull_request:
     branches: [main]
     paths:
