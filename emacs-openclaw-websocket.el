@@ -157,4 +157,17 @@
                    (message . ,prompt)
                    (idempotencyKey . ,id))))))))
 
+;; ----------------------------------------------------------------------------
+;; Disconnect
+;; ----------------------------------------------------------------------------
+
+;;;###autoload
+(defun emacs-openclaw-disconnect ()
+  "Disconnect the WebSocket connection to OpenClaw."
+  (interactive)
+  (when emacs-openclaw--websocket
+    (websocket-close emacs-openclaw--websocket)
+    (setq emacs-openclaw--websocket nil)
+    (message "emacs-openclaw: Disconnected")))
+
 (provide 'emacs-openclaw-websocket)
