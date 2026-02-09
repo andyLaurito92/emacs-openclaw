@@ -1,0 +1,72 @@
+name: Python Server Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - '.github/workflows/python-tests.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - '.github/workflows/python-tests.yml'
+
+jobs:
+  python-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']
+    
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          cd server
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run pytest
+        run: |
+          cd server
+          python -m pytest test_server.py -v --tb=short
+
+      - name: Test server imports
+        run: |
+          cd server
+          python -c "import google_tools; import google_server; import server; print('All imports successful')"
+
+      - name: Check for google_ prefix in exports
+        run: |
+          cd server
+          python -c "
+          import google_tools
+          required_functions = [
+              'google_send_email',
+              'google_list_emails',
+              'google_search_emails',
+              'google_delete_email',
+              'google_create_calendar_event',
+              'google_delete_calendar_event',
+              'google_list_drive_files',
+              'google_search_drive_files',
+              'google_get_drive_file',
+              'google_read_drive_file',
+              'google_create_drive_file',
+              'google_create_drive_folder',
+              'google_update_drive_file',
+              'google_delete_drive_file',
+              'google_share_drive_file',
+          ]
+          for func_name in required_functions:
+              if not hasattr(google_tools, func_name):
+                  raise AssertionError(f'Missing {func_name} in google_tools')
+          print(f'✓ All {len(required_functions)} required functions exported with google_ prefix')
+          "
