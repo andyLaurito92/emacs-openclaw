@@ -7,6 +7,7 @@ import logging
 import os
 
 from google_server import router as google_router
+from microsoft_server import router as microsoft_router
 
 # Setup logging to file and console
 log_file = "logs.txt"
@@ -66,6 +67,7 @@ app = FastAPI(
 # =========================
 
 app.include_router(google_router)
+app.include_router(microsoft_router)
 
 
 # =========================
@@ -86,7 +88,7 @@ def health_check():
 def list_tools():
     """List available tools and their descriptions."""
     return {
-        "providers": ["google", "microsoft (coming soon)"],
+        "providers": ["google", "microsoft"],
         "tools": [
             {
                 "provider": "google",
@@ -240,6 +242,84 @@ def list_tools():
                 "description": "Delete a file from Google Drive",
                 "parameters": {
                     "file_id": "string (file ID)"
+                }
+            },
+            # MICROSOFT 365 TOOLS
+            {
+                "provider": "microsoft",
+                "name": "send_email",
+                "endpoint": "/microsoft/send-email",
+                "method": "POST",
+                "description": "Send an email via Outlook",
+                "parameters": {
+                    "to": "string (email address)",
+                    "subject": "string",
+                    "body": "string"
+                }
+            },
+            {
+                "provider": "microsoft",
+                "name": "search_emails",
+                "endpoint": "/microsoft/search-emails",
+                "method": "GET",
+                "description": "Search emails using Microsoft Graph query syntax",
+                "parameters": {
+                    "query": "string (search term)",
+                    "limit": "integer (default: 10)"
+                }
+            },
+            {
+                "provider": "microsoft",
+                "name": "list_emails",
+                "endpoint": "/microsoft/emails",
+                "method": "GET",
+                "description": "List recent emails from Outlook inbox",
+                "parameters": {
+                    "limit": "integer (default: 10)"
+                }
+            },
+            {
+                "provider": "microsoft",
+                "name": "delete_email",
+                "endpoint": "/microsoft/email/{message_id}",
+                "method": "DELETE",
+                "description": "Delete (move to trash) an email by message ID",
+                "parameters": {
+                    "message_id": "string (email ID)"
+                }
+            },
+            {
+                "provider": "microsoft",
+                "name": "list_events",
+                "endpoint": "/microsoft/events",
+                "method": "GET",
+                "description": "List upcoming calendar events from Outlook",
+                "parameters": {
+                    "limit": "integer (default: 10)"
+                }
+            },
+            {
+                "provider": "microsoft",
+                "name": "create_calendar_event",
+                "endpoint": "/microsoft/calendar-event",
+                "method": "POST",
+                "description": "Create a calendar event in Outlook",
+                "parameters": {
+                    "summary": "string",
+                    "start_iso": "string (ISO-8601 datetime)",
+                    "end_iso": "string (ISO-8601 datetime)",
+                    "description": "string (optional)",
+                    "attendees": "array of email addresses (optional)"
+                }
+            },
+            {
+                "provider": "microsoft",
+                "name": "delete_calendar_event",
+                "endpoint": "/microsoft/calendar-event/{event_id}",
+                "method": "DELETE",
+                "description": "Delete a calendar event by ID",
+                "parameters": {
+                    "event_id": "string (calendar event ID)"
                 }
             }
         ]
