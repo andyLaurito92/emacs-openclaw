@@ -32,7 +32,7 @@ def _load_creds() -> Credentials:
 # Gmail
 # =========================
 
-def send_email(
+def google_send_email(
     to: str,
     subject: str,
     body: str,
@@ -56,7 +56,7 @@ def send_email(
     ).execute()
 
 
-def search_emails(query: str) -> list:
+def google_search_emails(query: str) -> list:
     """
     Search emails by query string.
     Returns a list of message IDs.
@@ -72,7 +72,7 @@ def search_emails(query: str) -> list:
     return results.get("messages", [])
 
 
-def get_email(message_id: str) -> dict:
+def google_get_email(message_id: str) -> dict:
     """
     Get full email details by message ID.
     """
@@ -98,7 +98,7 @@ def get_email(message_id: str) -> dict:
     }
 
 
-def list_emails(max_results: int = 10) -> list:
+def google_list_emails(max_results: int = 10) -> list:
     """
     Get the last N emails (unread and read).
     """
@@ -111,10 +111,10 @@ def list_emails(max_results: int = 10) -> list:
     ).execute()
 
     messages = results.get("messages", [])
-    return [get_email(msg["id"]) for msg in messages]
+    return [google_get_email(msg["id"]) for msg in messages]
 
 
-def delete_email(message_id: str) -> None:
+def google_delete_email(message_id: str) -> None:
     """
     Delete an email by message ID.
     """
@@ -131,7 +131,7 @@ def delete_email(message_id: str) -> None:
 # Google Calendar
 # =========================
 
-def create_calendar_event(
+def google_create_calendar_event(
     summary: str,
     start_iso: str,
     end_iso: str,
@@ -176,7 +176,7 @@ def create_calendar_event(
     }
 
 
-def delete_calendar_event(event_id: str) -> None:
+def google_delete_calendar_event(event_id: str) -> None:
     """
     Delete a calendar event by ID.
     """
@@ -194,7 +194,7 @@ def delete_calendar_event(event_id: str) -> None:
 # Google Drive
 # =========================
 
-def list_drive_files(
+def google_list_drive_files(
     query: Optional[str] = None,
     max_results: int = 10,
     order_by: str = "modifiedTime desc",
@@ -222,17 +222,17 @@ def list_drive_files(
     return results.get("files", [])
 
 
-def search_drive_files(
+def google_search_drive_files(
     query: str,
     max_results: int = 10,
 ) -> list:
     """
     Search files in Google Drive by name or content.
     """
-    return list_drive_files(query=query, max_results=max_results)
+    return google_list_drive_files(query=query, max_results=max_results)
 
 
-def get_drive_file(file_id: str) -> dict:
+def google_get_drive_file(file_id: str) -> dict:
     """
     Get file metadata by ID.
     """
@@ -247,7 +247,7 @@ def get_drive_file(file_id: str) -> dict:
     return file
 
 
-def read_drive_file(file_id: str) -> str:
+def google_read_drive_file(file_id: str) -> str:
     """
     Read file content from Google Drive.
     Supports Google Docs (converts to plain text), text files, and PDFs.
@@ -290,7 +290,7 @@ def read_drive_file(file_id: str) -> str:
         raise ValueError(f"Unsupported file type: {mime_type}")
 
 
-def create_drive_file(
+def google_create_drive_file(
     name: str,
     content: str,
     parent_folder_id: Optional[str] = None,
@@ -333,14 +333,14 @@ def create_drive_file(
     }
 
 
-def create_drive_folder(
+def google_create_drive_folder(
     name: str,
     parent_folder_id: Optional[str] = None,
 ) -> dict:
     """
     Create a folder in Google Drive.
     """
-    return create_drive_file(
+    return google_create_drive_file(
         name=name,
         content="",
         parent_folder_id=parent_folder_id,
@@ -348,7 +348,7 @@ def create_drive_folder(
     )
 
 
-def update_drive_file(
+def google_update_drive_file(
     file_id: str,
     content: str,
 ) -> dict:
@@ -374,7 +374,7 @@ def update_drive_file(
     }
 
 
-def delete_drive_file(file_id: str) -> None:
+def google_delete_drive_file(file_id: str) -> None:
     """
     Delete a file from Google Drive (permanent deletion).
     """
@@ -384,7 +384,7 @@ def delete_drive_file(file_id: str) -> None:
     service.files().delete(fileId=file_id).execute()
 
 
-def share_drive_file(
+def google_share_drive_file(
     file_id: str,
     email: str,
     role: str = "reader",
