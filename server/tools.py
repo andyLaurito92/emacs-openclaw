@@ -10,6 +10,7 @@ from googleapiclient.discovery import build
 TOKEN_FILE = "token.json"
 GMAIL_API = ("gmail", "v1")
 CALENDAR_API = ("calendar", "v3")
+DRIVE_API = ("drive", "v3")
 
 
 def _load_creds() -> Credentials:
@@ -187,3 +188,197 @@ def delete_calendar_event(event_id: str) -> None:
         eventId=event_id,
         sendUpdates="all",
     ).execute()
+
+
+# =========================
+# Google Drive
+# =========================
+
+def list_drive_files(
+    query: Optional[str] = None,
+    max_results: int = 10,
+    order_by: str = "modifiedTime desc",
+) -> list:
+    """
+    List files in Google Drive.
+    
+    query: Optional filter (e.g., "name contains 'document'", "mimeType='application/vnd.google-apps.folder'")
+    max_results: Maximum number of files to return
+    order_by: How to sort results (e.g., "modifiedTime desc", "name asc")
+    """
+    creds = _load_creds()
+    service = build(*DRIVE_API, credentials=creds)
+
+    q = query if query else "trashed=false"
+    
+    results = service.files().list(
+        q=q,
+        spaces="drive",
+        fields="files(id, name, mimeType, modifiedTime, owners, webViewLink, size)",
+        pageSize=max_results,
+        orderBy=order_by,
+    ).execute()
+
+    return results.get("files", [])
+
+
+def search_drive_files(
+    query: str,
+    max_results: int = 10,
+) -> list:
+    """
+    Search files in Google Drive by name or content.
+    """
+    return list_drive_files(query=query, max_results=max_results)
+
+
+def get_drive_file(file_id: str) -> dict:
+    """
+    Get file metadata by ID.
+    """
+    creds = _load_creds()
+    service = build(*DRIVE_API, credentials=creds)
+
+    file = service.files().get(
+        fileId=file_id,
+        fields="id, name, mimeType, modifiedTime, owners, webViewLink, size, description",
+    ).execute()
+
+    return file
+
+
+def read_drive_file(file_id: str) -> str:
+    """
+    Read file content from Google Drive.
+    Supports Google Docs (converts to plain text), text files, and PDFs.
+    """
+    creds = _load_creds()
+    service = build(*DRIVE_API, credentials=creds)
+
+    # Get file metadata first
+    file = service.files().get(
+        fileId=file_id,
+        fields="id, name, mimeType",
+    ).execute()
+
+    mime_type = file.get("mimeType", "")
+    
+    # Handle Google Docs
+    if "application/vnd.google-apps.document" in mime_type:
+        # Export as plain text
+        content = service.files().export(
+            fileId=file_id,
+            mimeType="text/plain",
+        ).execute()
+        return content.decode("utf-8") if isinstance(content, bytes) else content
+    
+    # Handle Google Sheets
+    elif "application/vnd.google-apps.spreadsheet" in mime_type:
+        # Export as CSV
+        content = service.files().export(
+            fileId=file_id,
+            mimeType="text/csv",
+        ).execute()
+        return content.decode("utf-8") if isinstance(content, bytes) else content
+    
+    # Handle plain text and other files
+    elif mime_type.startswith("text/"):
+        content = service.files().get_media(fileId=file_id).execute()
+        return content.decode("utf-8") if isinstance(content, bytes) else content
+    
+    else:
+        raise ValueError(f"Unsupported file type: {mime_type}")
+
+
+def create_drive_file(
+    name: str,
+    content: str,
+    parent_folder_id: Optional[str] = None,
+    mime_type: str = "text/plain",
+) -> dict:
+    """
+    Create a file in Google Drive.
+    
+    mime_type examples:
+    - "text/plain" for text files
+    - "application/vnd.google-apps.document" for Google Docs
+    - "application/vnd.google-apps.spreadsheet" for Google Sheets
+    """
+    creds = _load_creds()
+    service = build(*DRIVE_API, credentials=creds)
+
+    file_metadata = {
+        "name": name,
+        "mimeType": mime_type,
+    }
+    
+    if parent_folder_id:
+        file_metadata["parents"] = [parent_folder_id]
+
+    media = None
+    if content and mime_type == "text/plain":
+        from googleapiclient.http import MediaInMemoryUpload
+        media = MediaInMemoryUpload(content.encode("utf-8"), mimetype=mime_type)
+
+    created = service.files().create(
+        body=file_metadata,
+        media_body=media,
+        fields="id, name, webViewLink",
+    ).execute()
+
+    return {
+        "id": created.get("id"),
+        "name": created.get("name"),
+        "webViewLink": created.get("webViewLink"),
+    }
+
+
+def create_drive_folder(
+    name: str,
+    parent_folder_id: Optional[str] = None,
+) -> dict:
+    """
+    Create a folder in Google Drive.
+    """
+    return create_drive_file(
+        name=name,
+        content="",
+        parent_folder_id=parent_folder_id,
+        mime_type="application/vnd.google-apps.folder",
+    )
+
+
+def update_drive_file(
+    file_id: str,
+    content: str,
+) -> dict:
+    """
+    Update file content in Google Drive.
+    """
+    creds = _load_creds()
+    service = build(*DRIVE_API, credentials=creds)
+
+    from googleapiclient.http import MediaInMemoryUpload
+    media = MediaInMemoryUpload(content.encode("utf-8"), mimetype="text/plain")
+
+    updated = service.files().update(
+        fileId=file_id,
+        media_body=media,
+        fields="id, name, webViewLink",
+    ).execute()
+
+    return {
+        "id": updated.get("id"),
+        "name": updated.get("name"),
+        "webViewLink": updated.get("webViewLink"),
+    }
+
+
+def delete_drive_file(file_id: str) -> None:
+    """
+    Delete a file from Google Drive (permanent deletion).
+    """
+    creds = _load_creds()
+    service = build(*DRIVE_API, credentials=creds)
+
+    service.files().delete(fileId=file_id).execute()
