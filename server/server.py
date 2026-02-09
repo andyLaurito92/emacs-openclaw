@@ -8,7 +8,7 @@ from typing import Optional, List
 import logging
 import os
 
-from tools import send_email, create_calendar_event, delete_calendar_event, search_emails, delete_email, list_emails, list_drive_files, search_drive_files, get_drive_file, read_drive_file, create_drive_file, create_drive_folder, update_drive_file, delete_drive_file
+from tools import send_email, create_calendar_event, delete_calendar_event, search_emails, delete_email, list_emails, list_drive_files, search_drive_files, get_drive_file, read_drive_file, create_drive_file, create_drive_folder, update_drive_file, delete_drive_file, share_drive_file
 
 # Setup logging to file and console
 log_file = "logs.txt"
@@ -83,7 +83,7 @@ class CalendarEventRequest(BaseModel):
 
 
 class DriveFileRequest(BaseModel):
-    name: str
+    name: Optional[str] = None
     content: str
     parent_folder_id: Optional[str] = None
     mime_type: str = "text/plain"
@@ -447,4 +447,17 @@ def delete_drive_file_endpoint(file_id: str):
         return {"status": "deleted"}
     except Exception as e:
         logger.error(f"Error deleting drive file {file_id}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/drive/file/{file_id}/share")
+def share_drive_file_endpoint(file_id: str, email: str, role: str = "reader"):
+    """Share a Google Drive file with someone."""
+    try:
+        logger.info(f"Sharing drive file {file_id} with {email} as {role}")
+        result = share_drive_file(file_id=file_id, email=email, role=role)
+        logger.info(f"Successfully shared file with {email}")
+        return {"status": "shared", "permission": result}
+    except Exception as e:
+        logger.error(f"Error sharing drive file {file_id}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

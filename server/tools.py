@@ -382,3 +382,31 @@ def delete_drive_file(file_id: str) -> None:
     service = build(*DRIVE_API, credentials=creds)
 
     service.files().delete(fileId=file_id).execute()
+
+
+def share_drive_file(
+    file_id: str,
+    email: str,
+    role: str = "reader",
+) -> dict:
+    """
+    Share a Google Drive file with someone.
+    
+    role options: "owner", "organizer", "fileOrganizer", "writer", "commenter", "reader"
+    """
+    creds = _load_creds()
+    service = build(*DRIVE_API, credentials=creds)
+
+    permission = {
+        "type": "user",
+        "role": role,
+        "emailAddress": email,
+    }
+
+    result = service.permissions().create(
+        fileId=file_id,
+        body=permission,
+        fields="id, emailAddress, role, type",
+    ).execute()
+
+    return result
