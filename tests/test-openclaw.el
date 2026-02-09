@@ -64,6 +64,11 @@
         (insert "test"))
       (kill-buffer buf-name)
       ;; This should not raise an error even though the buffer is deleted
-      (should-not (emacs-openclaw--log "test message" nil))
+      (should-not
+       (condition-case err
+           (progn
+             (emacs-openclaw--log "test message" nil)
+             nil)  ;; Return nil if no error
+         (error err)))  ;; Return the error if one occurs
       ;; Verify buffer is still not alive
       (should-not (buffer-live-p (get-buffer buf-name))))))
