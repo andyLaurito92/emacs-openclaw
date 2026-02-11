@@ -36,8 +36,8 @@
   :type '(choice (const nil) string)
   :group 'emacs-openclaw)
 
-(defcustom emacs-openclaw-audio-device ":1"
-  "The ffmpeg audio device index (e.g., ':0', ':1')."
+(defcustom emacs-openclaw-audio-device ":2"
+  "The ffmpeg audio device. On macOS, run: ffmpeg -f avfoundation -list_devices true -i \"\" 2>&1 | grep audio"
   :type 'string
   :group 'emacs-openclaw)
 
@@ -85,10 +85,14 @@
       proc)))
 
 (defun emacs-openclaw--whisper-stop-recording (proc)
-  "Stop the recording process safely."
+  "Stop the recording process safely by sending 'q' to ffmpeg."
   (when (and proc (process-live-p proc))
-    (interrupt-process proc)
+    ;; Send 'q' + newline to ffmpeg to gracefully stop and finalize the file
+    (process-send-string proc "q\n")
     (accept-process-output proc 2 nil t)
+    (when (process-live-p proc)
+      (interrupt-process proc)
+      (accept-process-output proc 1 nil t))
     (when (process-live-p proc)
       (delete-process proc))))
 
