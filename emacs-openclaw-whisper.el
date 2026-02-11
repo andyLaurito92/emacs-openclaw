@@ -11,24 +11,7 @@
 
 ;;; Code:
 
-;; ============================================================================
-;; Customization Variables
-;; ============================================================================
-
-(defcustom emacs-openclaw-allow-speech-to-text nil
-  "Enable speech-to-text support in OpenClaw chat buffer.
-Requires whisper.el to be installed and configured.
-Default is disabled (nil)."
-  :type 'boolean
-  :group 'emacs-openclaw)
-
-(defcustom emacs-openclaw-whisper-keybinding "C-c C-s"
-  "Keybinding for starting/stopping speech recording in OpenClaw chat.
-Only used if `emacs-openclaw-allow-speech-to-text' is non-nil.
-Set to nil to disable keybinding."
-  :type '(choice (const :tag "Disabled" nil)
-                 (string :tag "Key sequence"))
-  :group 'emacs-openclaw)
+(require 'emacs-openclaw-config)
 
 ;; ============================================================================
 ;; Internal State
