@@ -26,7 +26,26 @@
 (define-minor-mode emacs-openclaw-mode
   "Minor mode for chatting with OpenClaw."
   :lighter " Claw"
-  :keymap emacs-openclaw-mode-map)
+  :keymap emacs-openclaw-mode-map
+  (when emacs-openclaw-mode
+    ;; Setup whisper integration if enabled
+    (emacs-openclaw--setup-whisper)))
+
+;; ============================================================================
+;; Whisper Setup (Conditional Loading)
+;; ============================================================================
+
+(defun emacs-openclaw--setup-whisper ()
+  "Conditionally load and setup whisper.el integration if enabled."
+  (require 'emacs-openclaw-config)
+  (when (and (boundp 'emacs-openclaw-allow-speech-to-text)
+             emacs-openclaw-allow-speech-to-text)
+    (condition-case err
+        (progn
+          (require 'emacs-openclaw-whisper)
+          (emacs-openclaw--setup-whisper-keybindings emacs-openclaw-mode-map))
+      (error
+       (message "emacs-openclaw: Failed to load whisper integration: %s" err)))))
 
 (provide 'emacs-openclaw-mode)
 ;;; emacs-openclaw-mode.el ends here
