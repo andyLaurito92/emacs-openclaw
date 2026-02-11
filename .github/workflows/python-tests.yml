@@ -30,20 +30,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Create dummy token for tests
-        run: |
-          cd server
-          touch token.json
-
       - name: Run pytest
         run: |
           cd server
           python -m pytest test_server.py -v --tb=short
+        env:
+          OPENCLAW_SKIP_AUTH: "true"
 
       - name: Test server imports
         run: |
           cd server
           python -c "import google_tools; import google_server; import server; print('All imports successful')"
+        env:
+          OPENCLAW_SKIP_AUTH: "true"
 
       - name: Check for google_ prefix in exports
         run: |
@@ -72,3 +71,5 @@ jobs:
                   raise AssertionError(f'Missing {func_name} in google_tools')
           print(f'✓ All {len(required_functions)} required functions exported with google_ prefix')
           "
+        env:
+          OPENCLAW_SKIP_AUTH: "true"
