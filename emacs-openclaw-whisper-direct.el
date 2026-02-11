@@ -142,7 +142,7 @@ Returns the transcribed text or nil on failure."
                      (match-string 1 output))))))))))
     (error
      (message "Transcription failed: %s" (error-message-string err))
-     nil)))
+     nil))
 
 
 ;; ============================================================================
