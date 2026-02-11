@@ -86,8 +86,7 @@ This is typically called via the keybinding, not directly."
 (defun emacs-openclaw--setup-whisper-keybindings (keymap)
   "Add whisper keybindings to the given KEYMAP if enabled."
   (when (and emacs-openclaw-allow-speech-to-text
-             emacs-openclaw-whisper-keybinding
-             (emacs-openclaw--whisper-available-p))
+             emacs-openclaw-whisper-keybinding)
     (define-key keymap (kbd emacs-openclaw-whisper-keybinding) 'emacs-openclaw-transcribe-speech)))
 
 ;; ============================================================================
