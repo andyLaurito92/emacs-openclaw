@@ -32,7 +32,7 @@ class TestServerStructure:
         data = response.json()
         assert "providers" in data
         assert "google" in data["providers"]
-        assert "microsoft (coming soon)" in data["providers"]
+        assert "microsoft" in data["providers"]
 
     def test_tools_list_has_google_endpoints(self, client):
         """Test that /tools lists all Google endpoints with /google prefix."""
