@@ -23,7 +23,7 @@ jobs:
     
     - name: Check Python syntax
       run: |
-        python -m py_compile server/server.py server/tools.py
+        python -m py_compile server/*.py
     
     - name: Install linting tools
       run: |

@@ -31,6 +31,7 @@ router = APIRouter(prefix="/google", tags=["google"])
 # Schemas
 # =========================
 
+
 class SendEmailRequest(BaseModel):
     to: EmailStr
     subject: str
@@ -61,6 +62,7 @@ class DriveFolderRequest(BaseModel):
 # =========================
 # Endpoints
 # =========================
+
 
 @router.post("/send-email")
 def send_email_endpoint(payload: SendEmailRequest):
@@ -142,6 +144,7 @@ def delete_calendar_event_endpoint(event_id: str):
 # =========================
 # Google Drive Endpoints
 # =========================
+
 
 @router.get("/drive/files")
 def list_drive_files_endpoint(query: Optional[str] = None, limit: int = 10):

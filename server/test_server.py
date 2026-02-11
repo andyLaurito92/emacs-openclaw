@@ -6,6 +6,7 @@ Tests the router structure and endpoint routing.
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import Mock, patch, MagicMock
+
 from server import app
 
 
@@ -32,18 +33,18 @@ class TestServerStructure:
         data = response.json()
         assert "providers" in data
         assert "google" in data["providers"]
-        assert "microsoft (coming soon)" in data["providers"]
+        assert "microsoft" in data["providers"]
 
     def test_tools_list_has_google_endpoints(self, client):
         """Test that /tools lists all Google endpoints with /google prefix."""
         response = client.get("/tools")
         data = response.json()
         tools = data["tools"]
-        
+
         # Check that all Google tools have correct prefix
         google_tools = [t for t in tools if t["provider"] == "google"]
         assert len(google_tools) > 0
-        
+
         for tool in google_tools:
             assert tool["endpoint"].startswith("/google/")
             assert tool["provider"] == "google"
@@ -80,11 +81,7 @@ class TestGoogleEmailRouting:
         with patch("google_server.google_send_email") as mock_send:
             response = client.post(
                 "/google/send-email",
-                json={
-                    "to": "test@example.com",
-                    "subject": "Test",
-                    "body": "Test body"
-                }
+                json={"to": "test@example.com", "subject": "Test", "body": "Test body"},
             )
             assert response.status_code == 200
             mock_send.assert_called_once()
@@ -102,8 +99,8 @@ class TestGoogleCalendarRouting:
                 json={
                     "summary": "Test Event",
                     "start_iso": "2026-02-10T10:00:00",
-                    "end_iso": "2026-02-10T11:00:00"
-                }
+                    "end_iso": "2026-02-10T11:00:00",
+                },
             )
             assert response.status_code == 200
             assert response.json()["status"] == "created"
@@ -158,10 +155,7 @@ class TestGoogleDriveRouting:
             mock_create.return_value = {"id": "new_file", "name": "test.txt"}
             response = client.post(
                 "/google/drive/file",
-                json={
-                    "name": "test.txt",
-                    "content": "Hello world"
-                }
+                json={"name": "test.txt", "content": "Hello world"},
             )
             assert response.status_code == 200
             mock_create.assert_called_once()
@@ -170,10 +164,7 @@ class TestGoogleDriveRouting:
         """Test /google/drive/folder POST endpoint is accessible."""
         with patch("google_server.google_create_drive_folder") as mock_create:
             mock_create.return_value = {"name": "test_folder"}
-            response = client.post(
-                "/google/drive/folder",
-                json={"name": "test_folder"}
-            )
+            response = client.post("/google/drive/folder", json={"name": "test_folder"})
             assert response.status_code == 200
             mock_create.assert_called_once()
 
@@ -182,8 +173,7 @@ class TestGoogleDriveRouting:
         with patch("google_server.google_update_drive_file") as mock_update:
             mock_update.return_value = {"id": "file123", "name": "test.txt"}
             response = client.put(
-                "/google/drive/file/file123",
-                json={"content": "Updated content"}
+                "/google/drive/file/file123", json={"content": "Updated content"}
             )
             assert response.status_code == 200
             mock_update.assert_called_once()
@@ -212,7 +202,7 @@ class TestGoogleToolsFunctionPrefix:
     def test_google_tools_exports_prefixed_functions(self):
         """Test that google_tools exports google_* prefixed functions."""
         import google_tools
-        
+
         # Check for key functions with google_ prefix
         expected_functions = [
             "google_send_email",
@@ -231,9 +221,11 @@ class TestGoogleToolsFunctionPrefix:
             "google_delete_drive_file",
             "google_share_drive_file",
         ]
-        
+
         for func_name in expected_functions:
-            assert hasattr(google_tools, func_name), f"Missing {func_name} in google_tools"
+            assert hasattr(
+                google_tools, func_name
+            ), f"Missing {func_name} in google_tools"
             assert callable(getattr(google_tools, func_name))
 
 
@@ -255,8 +247,8 @@ class TestErrorHandling:
             json={
                 "to": "invalid-email",  # Invalid email format
                 "subject": "Test",
-                "body": "Test"
-            }
+                "body": "Test",
+            },
         )
         # Should fail validation
         assert response.status_code == 422  # Unprocessable Entity
@@ -270,7 +262,7 @@ class TestRouterIsolation:
         # Old paths like /emails should not exist anymore
         response = client.get("/emails")
         assert response.status_code == 404
-        
+
         response = client.get("/drive/files")
         assert response.status_code == 404
 
@@ -279,11 +271,11 @@ class TestRouterIsolation:
         # Test that /google prefix is required
         with patch("google_server.google_list_emails") as mock_list:
             mock_list.return_value = []
-            
+
             # Should work with /google prefix
             response = client.get("/google/emails")
             assert response.status_code == 200
-            
+
             # Should fail without prefix
             response = client.get("/emails")
             assert response.status_code == 404

@@ -15,22 +15,24 @@ DRIVE_API = ("drive", "v3")
 
 def _load_creds() -> Credentials:
     from google.auth.transport.requests import Request
-    
+
     creds = Credentials.from_authorized_user_file(TOKEN_FILE)
-    
+
     # Force refresh to get fresh token with latest scopes
     if creds.refresh_token:
         creds.refresh(Request())
         import logging
+
         logger = logging.getLogger(__name__)
         logger.info(f"Refreshed credentials with scopes: {creds.scopes}")
-    
+
     return creds
 
 
 # =========================
 # Gmail
 # =========================
+
 
 def google_send_email(
     to: str,
@@ -50,10 +52,7 @@ def google_send_email(
 
     raw = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
 
-    service.users().messages().send(
-        userId="me",
-        body={"raw": raw}
-    ).execute()
+    service.users().messages().send(userId="me", body={"raw": raw}).execute()
 
 
 def google_search_emails(query: str) -> list:
@@ -64,10 +63,15 @@ def google_search_emails(query: str) -> list:
     creds = _load_creds()
     service = build(*GMAIL_API, credentials=creds)
 
-    results = service.users().messages().list(
-        userId="me",
-        q=query,
-    ).execute()
+    results = (
+        service.users()
+        .messages()
+        .list(
+            userId="me",
+            q=query,
+        )
+        .execute()
+    )
 
     return results.get("messages", [])
 
@@ -79,11 +83,16 @@ def google_get_email(message_id: str) -> dict:
     creds = _load_creds()
     service = build(*GMAIL_API, credentials=creds)
 
-    msg = service.users().messages().get(
-        userId="me",
-        id=message_id,
-        format="full",
-    ).execute()
+    msg = (
+        service.users()
+        .messages()
+        .get(
+            userId="me",
+            id=message_id,
+            format="full",
+        )
+        .execute()
+    )
 
     headers = msg["payload"]["headers"]
     subject = next((h["value"] for h in headers if h["name"] == "Subject"), "")
@@ -105,10 +114,15 @@ def google_list_emails(max_results: int = 10) -> list:
     creds = _load_creds()
     service = build(*GMAIL_API, credentials=creds)
 
-    results = service.users().messages().list(
-        userId="me",
-        maxResults=max_results,
-    ).execute()
+    results = (
+        service.users()
+        .messages()
+        .list(
+            userId="me",
+            maxResults=max_results,
+        )
+        .execute()
+    )
 
     messages = results.get("messages", [])
     return [google_get_email(msg["id"]) for msg in messages]
@@ -130,6 +144,7 @@ def google_delete_email(message_id: str) -> None:
 # =========================
 # Google Calendar
 # =========================
+
 
 def google_create_calendar_event(
     summary: str,
@@ -164,11 +179,15 @@ def google_create_calendar_event(
     if attendees:
         event["attendees"] = [{"email": e} for e in attendees]
 
-    created = service.events().insert(
-        calendarId="primary",
-        body=event,
-        sendUpdates="all",   # ← THIS sends the invites
-    ).execute()
+    created = (
+        service.events()
+        .insert(
+            calendarId="primary",
+            body=event,
+            sendUpdates="all",  # ← THIS sends the invites
+        )
+        .execute()
+    )
 
     return {
         "id": created.get("id"),
@@ -194,6 +213,7 @@ def google_delete_calendar_event(event_id: str) -> None:
 # Google Drive
 # =========================
 
+
 def google_list_drive_files(
     query: Optional[str] = None,
     max_results: int = 10,
@@ -201,7 +221,7 @@ def google_list_drive_files(
 ) -> list:
     """
     List files in Google Drive.
-    
+
     query: Optional filter (e.g., "name contains 'document'", "mimeType='application/vnd.google-apps.folder'")
     max_results: Maximum number of files to return
     order_by: How to sort results (e.g., "modifiedTime desc", "name asc")
@@ -210,14 +230,18 @@ def google_list_drive_files(
     service = build(*DRIVE_API, credentials=creds)
 
     q = query if query else "trashed=false"
-    
-    results = service.files().list(
-        q=q,
-        spaces="drive",
-        fields="files(id, name, mimeType, modifiedTime, owners, webViewLink, size)",
-        pageSize=max_results,
-        orderBy=order_by,
-    ).execute()
+
+    results = (
+        service.files()
+        .list(
+            q=q,
+            spaces="drive",
+            fields="files(id, name, mimeType, modifiedTime, owners, webViewLink, size)",
+            pageSize=max_results,
+            orderBy=order_by,
+        )
+        .execute()
+    )
 
     return results.get("files", [])
 
@@ -239,10 +263,14 @@ def google_get_drive_file(file_id: str) -> dict:
     creds = _load_creds()
     service = build(*DRIVE_API, credentials=creds)
 
-    file = service.files().get(
-        fileId=file_id,
-        fields="id, name, mimeType, modifiedTime, owners, webViewLink, size, description",
-    ).execute()
+    file = (
+        service.files()
+        .get(
+            fileId=file_id,
+            fields="id, name, mimeType, modifiedTime, owners, webViewLink, size, description",
+        )
+        .execute()
+    )
 
     return file
 
@@ -256,36 +284,48 @@ def google_read_drive_file(file_id: str) -> str:
     service = build(*DRIVE_API, credentials=creds)
 
     # Get file metadata first
-    file = service.files().get(
-        fileId=file_id,
-        fields="id, name, mimeType",
-    ).execute()
+    file = (
+        service.files()
+        .get(
+            fileId=file_id,
+            fields="id, name, mimeType",
+        )
+        .execute()
+    )
 
     mime_type = file.get("mimeType", "")
-    
+
     # Handle Google Docs
     if "application/vnd.google-apps.document" in mime_type:
         # Export as plain text
-        content = service.files().export(
-            fileId=file_id,
-            mimeType="text/plain",
-        ).execute()
+        content = (
+            service.files()
+            .export(
+                fileId=file_id,
+                mimeType="text/plain",
+            )
+            .execute()
+        )
         return content.decode("utf-8") if isinstance(content, bytes) else content
-    
+
     # Handle Google Sheets
     elif "application/vnd.google-apps.spreadsheet" in mime_type:
         # Export as CSV
-        content = service.files().export(
-            fileId=file_id,
-            mimeType="text/csv",
-        ).execute()
+        content = (
+            service.files()
+            .export(
+                fileId=file_id,
+                mimeType="text/csv",
+            )
+            .execute()
+        )
         return content.decode("utf-8") if isinstance(content, bytes) else content
-    
+
     # Handle plain text and other files
     elif mime_type.startswith("text/"):
         content = service.files().get_media(fileId=file_id).execute()
         return content.decode("utf-8") if isinstance(content, bytes) else content
-    
+
     else:
         raise ValueError(f"Unsupported file type: {mime_type}")
 
@@ -298,7 +338,7 @@ def google_create_drive_file(
 ) -> dict:
     """
     Create a file in Google Drive.
-    
+
     mime_type examples:
     - "text/plain" for text files
     - "application/vnd.google-apps.document" for Google Docs
@@ -311,20 +351,25 @@ def google_create_drive_file(
         "name": name,
         "mimeType": mime_type,
     }
-    
+
     if parent_folder_id:
         file_metadata["parents"] = [parent_folder_id]
 
     media = None
     if content and mime_type == "text/plain":
         from googleapiclient.http import MediaInMemoryUpload
+
         media = MediaInMemoryUpload(content.encode("utf-8"), mimetype=mime_type)
 
-    created = service.files().create(
-        body=file_metadata,
-        media_body=media,
-        fields="id, name, webViewLink",
-    ).execute()
+    created = (
+        service.files()
+        .create(
+            body=file_metadata,
+            media_body=media,
+            fields="id, name, webViewLink",
+        )
+        .execute()
+    )
 
     return {
         "id": created.get("id"),
@@ -359,13 +404,18 @@ def google_update_drive_file(
     service = build(*DRIVE_API, credentials=creds)
 
     from googleapiclient.http import MediaInMemoryUpload
+
     media = MediaInMemoryUpload(content.encode("utf-8"), mimetype="text/plain")
 
-    updated = service.files().update(
-        fileId=file_id,
-        media_body=media,
-        fields="id, name, webViewLink",
-    ).execute()
+    updated = (
+        service.files()
+        .update(
+            fileId=file_id,
+            media_body=media,
+            fields="id, name, webViewLink",
+        )
+        .execute()
+    )
 
     return {
         "id": updated.get("id"),
@@ -391,7 +441,7 @@ def google_share_drive_file(
 ) -> dict:
     """
     Share a Google Drive file with someone.
-    
+
     role options: "owner", "organizer", "fileOrganizer", "writer", "commenter", "reader"
     """
     creds = _load_creds()
@@ -403,10 +453,14 @@ def google_share_drive_file(
         "emailAddress": email,
     }
 
-    result = service.permissions().create(
-        fileId=file_id,
-        body=permission,
-        fields="id, emailAddress, role, type",
-    ).execute()
+    result = (
+        service.permissions()
+        .create(
+            fileId=file_id,
+            body=permission,
+            fields="id, emailAddress, role, type",
+        )
+        .execute()
+    )
 
     return result
