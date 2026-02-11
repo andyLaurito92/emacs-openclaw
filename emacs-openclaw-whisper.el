@@ -90,5 +90,17 @@ This is typically called via the keybinding, not directly."
              (emacs-openclaw--whisper-available-p))
     (define-key keymap (kbd emacs-openclaw-whisper-keybinding) 'emacs-openclaw-transcribe-speech)))
 
+;; ============================================================================
+;; Auto-bind on module load
+;; ============================================================================
+
+;; Immediately set up keybindings if the feature is enabled and whisper is available
+(when (and emacs-openclaw-allow-speech-to-text
+           emacs-openclaw-whisper-keybinding
+           (emacs-openclaw--whisper-available-p))
+  (require 'emacs-openclaw-mode nil t)
+  (emacs-openclaw--setup-whisper-keybindings emacs-openclaw-mode-map)
+  (message "emacs-openclaw: Speech-to-text keybinding [%s] registered" emacs-openclaw-whisper-keybinding))
+
 (provide 'emacs-openclaw-whisper)
 ;;; emacs-openclaw-whisper.el ends here

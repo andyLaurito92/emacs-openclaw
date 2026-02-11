@@ -24,11 +24,11 @@
 (require 'emacs-openclaw-chat)
 
 ;; Conditionally load whisper integration (only if user enables it)
-;; This avoids requiring whisper.el as a hard dependency
+;; Uses direct Whisper CLI integration (no whisper.el dependency)
 (eval-after-load 'emacs-openclaw-mode
   '(when (and (boundp 'emacs-openclaw-allow-speech-to-text)
               emacs-openclaw-allow-speech-to-text)
-     (require 'emacs-openclaw-whisper nil t)))
+     (require 'emacs-openclaw-whisper-direct nil t)))
 
 ;; Public API is re-exported from submodules via require statements above.
 ;; No need for defalias — the submodules define the actual functions.
