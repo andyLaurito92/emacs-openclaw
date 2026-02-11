@@ -118,7 +118,6 @@
                      (text (plist-get json-data :text)))
                 (delete-file json-output-file)
                 (when text (string-trim text))))))))))
->>>>>>> 397c8c2 (Fixing issues)
 
 ;; ============================================================================
 ;; Main Command
@@ -130,6 +129,7 @@
   (interactive)
   (unless (emacs-openclaw--whisper-binary-exists-p)
     (error "Whisper binary not found at %s" emacs-openclaw-whisper-binary))
+
   (let* ((wav-file (emacs-openclaw--whisper-temp-file))
          (buffer (current-buffer))
          (point-mkr (point-marker))
