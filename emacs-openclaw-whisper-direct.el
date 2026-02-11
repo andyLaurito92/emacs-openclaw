@@ -1,7 +1,7 @@
 ;;; emacs-openclaw-whisper-direct.el --- Direct Whisper CLI integration -*- lexical-binding: t; -*-
 
 ;; Author: Andres Laurito <andy.laurito@gmail.com>
-;; Version: 0.1.2
+;; Version: 0.2.0
 
 (require 'json)
 (require 'subr-x)
@@ -26,13 +26,8 @@
   :group 'emacs-openclaw)
 
 (defcustom emacs-openclaw-whisper-language nil
-  "Language code for Whisper (e.g., 'en'). nil = auto-detect."
+  "Language code for Whisper (e.g., 'en', 'es'). nil = auto-detect."
   :type '(choice (const nil) string)
-  :group 'emacs-openclaw)
-
-(defcustom emacs-openclaw-audio-device ":1"
-  "The ffmpeg audio device index."
-  :type 'string
   :group 'emacs-openclaw)
 
 ;; ============================================================================
@@ -47,29 +42,29 @@
   (make-temp-file "openclaw-whisper-" nil ".wav"))
 
 (defun emacs-openclaw--whisper-record-start (wav-file)
-  "Start recording audio. Uses -nostats to keep pipe clean."
-  (let* ((recorder-cmd 
-          (format "ffmpeg -hide_banner -nostats -f avfoundation -i '%s' -c:a pcm_s16le -ar 16000 -ac 1 %s -y"
-                  emacs-openclaw-audio-device
-                  (shell-quote-argument wav-file))))
-    (let ((proc (start-process-shell-command "emacs-openclaw-record" nil recorder-cmd)))
+  "Start recording audio via sox using the default system device."
+  (let* ((sox-bin (executable-find "sox"))
+         (recorder-cmd 
+          (if sox-bin
+              (format "sox -d -r 16000 -c 1 -b 16 %s --no-show-progress"
+                      (shell-quote-argument wav-file))
+            (error "Sox not found. Run 'brew install sox'"))))
+    (message "[WHISPER] Recording started (using System Default Input)...")
+    ;; Output redirected to a debug buffer so we can monitor for silence/errors
+    (let ((proc (start-process-shell-command "emacs-openclaw-record" "*openclaw-sox*" recorder-cmd)))
       (set-process-query-on-exit-flag proc nil)
       proc)))
 
 (defun emacs-openclaw--whisper-stop-recording (proc)
-  "Stop recording with a slightly longer grace period for FFmpeg."
+  "Stop the sox process gracefully."
   (when (and proc (process-live-p proc))
-    (process-send-string proc "q\n")
-    ;; Wait up to 2 seconds for ffmpeg to flush the WAV header
+    (message "[WHISPER] Stopping recording...")
+    (interrupt-process proc)
     (let ((timeout 0))
       (while (and (process-live-p proc) (< timeout 20))
         (accept-process-output proc 0.1)
         (setq timeout (1+ timeout))))
-    (when (process-live-p proc)
-      (interrupt-process proc)
-      (accept-process-output proc 0.5))
-    (when (process-live-p proc)
-      (delete-process proc))))
+    (sleep-for 0.5)))
 
 (defun emacs-openclaw--whisper-transcribe-file (wav-file)
   "Transcribe WAV-FILE and handle various JSON structures."
@@ -97,11 +92,10 @@
                  (json-data (json-read-from-string raw-content))
                  (text (plist-get json-data :text)))
 
-            ;; --- NEW LOGGING ---
             (message "[WHISPER DEBUG] RAW JSON CONTENT: %s" raw-content)
             
-            ;; Fallback: If :text is empty or just "You", try segments
-            (when (or (not text) (string-equal (string-trim text) "You"))
+            ;; Fallback for hallucinations/empty text
+            (when (or (not text) (string-match-p "^\\s-*You\\s-*$" text))
               (message "[WHISPER DEBUG] Primary text field was '%s', checking segments..." text)
               (let ((segments (plist-get json-data :segments)))
                 (setq text (mapconcat (lambda (s) (plist-get s :text)) segments " "))))
@@ -111,7 +105,7 @@
             (if (and text (> (length (string-trim text)) 0))
                 (string-trim text)
               (progn
-                (message "[WHISPER DEBUG] Failed to extract any text from JSON.")
+                (message "[WHISPER DEBUG] Failed to extract text. Check *openclaw-sox* for audio issues.")
                 nil))))))))
 
 ;; ============================================================================
@@ -120,10 +114,10 @@
 
 ;;;###autoload
 (defun emacs-openclaw-transcribe-speech ()
-  "Record and transcribe speech at point."
+  "Record and transcribe speech at point using Sox and Whisper CLI."
   (interactive)
   (unless (emacs-openclaw--whisper-binary-exists-p)
-    (error "Whisper binary not found"))
+    (error "Whisper binary not found at %s" emacs-openclaw-whisper-binary))
 
   (let* ((wav-file (emacs-openclaw--whisper-temp-file))
          (buffer (current-buffer))
@@ -134,9 +128,10 @@
         (when (y-or-n-p "🎙️ Recording... Stop and transcribe?")
           (emacs-openclaw--whisper-stop-recording proc)
           
+          ;; Check if file exists and has reasonable size (Sox files are usually > 40k for a few seconds)
           (if (not (and (file-exists-p wav-file) 
-                        (> (file-attribute-size (file-attributes wav-file)) 1000)))
-              (message "❌ Recording failed: Audio file too small.")
+                        (> (file-attribute-size (file-attributes wav-file)) 2000)))
+              (message "❌ Recording failed: Audio file empty. Ensure Microphone permissions are enabled for Emacs.")
             
             (let ((transcript (emacs-openclaw--whisper-transcribe-file wav-file)))
               (if (and transcript (> (length transcript) 0))
@@ -152,3 +147,4 @@
       (set-marker point-mkr nil))))
 
 (provide 'emacs-openclaw-whisper-direct)
+;;; emacs-openclaw-whisper-direct.el ends here
