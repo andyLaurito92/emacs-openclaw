@@ -1,7 +1,7 @@
 ;;; emacs-openclaw.el --- OpenClaw chat integration for Emacs -*- lexical-binding: t; -*-
 
 ;; Author: Andres Laurito <andy.laurito@gmail.com>
-;; Version: 0.1.0
+;; Version: 0.2.0
 ;; Package-Requires: ((emacs "27.1") (request "0.3.0") (websocket "1.13"))
 ;; Keywords: tools, openclaw, chat, ai
 ;; URL: https://github.com/andyLaurito92/emacs-openclaw
@@ -12,12 +12,23 @@
 ;; directly within Emacs. It uses WebSocket protocol for real-time
 ;; streaming chat responses. Configuration is automatically detected from
 ;; ~/.openclaw/openclaw.json (gateway token and port).
+;;
+;; Optional features:
+;; - Speech-to-text support via whisper.el (disabled by default)
+;;   Set `emacs-openclaw-allow-speech-to-text' to t to enable.
 
 (require 'emacs-openclaw-config)
 (require 'emacs-openclaw-websocket)
 (require 'emacs-openclaw-server)
 (require 'emacs-openclaw-mode)
 (require 'emacs-openclaw-chat)
+
+;; Conditionally load whisper integration (only if user enables it)
+;; This avoids requiring whisper.el as a hard dependency
+(eval-after-load 'emacs-openclaw-mode
+  '(when (and (boundp 'emacs-openclaw-allow-speech-to-text)
+              emacs-openclaw-allow-speech-to-text)
+     (require 'emacs-openclaw-whisper nil t)))
 
 ;; Public API is re-exported from submodules via require statements above.
 ;; No need for defalias — the submodules define the actual functions.

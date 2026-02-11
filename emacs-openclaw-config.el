@@ -66,6 +66,25 @@ If nil, will be auto-detected from the main session key provided by the gateway.
   :type 'integer
   :group 'emacs-openclaw)
 
+(defcustom emacs-openclaw-allow-speech-to-text nil
+  "Enable speech-to-text support in OpenClaw chat buffer.
+Requires whisper.el to be installed and configured.
+Default is disabled (nil).
+
+Note: This is the main configuration point. Set to t to enable
+speech-to-text functionality. All dependencies (whisper.el, Whisper CLI,
+ffmpeg) must be installed and configured by the user separately."
+  :type 'boolean
+  :group 'emacs-openclaw)
+
+(defcustom emacs-openclaw-whisper-keybinding "C-c C-s"
+  "Keybinding for starting/stopping speech recording in OpenClaw chat.
+Only used if `emacs-openclaw-allow-speech-to-text' is non-nil.
+Set to nil to disable keybinding."
+  :type '(choice (const :tag "Disabled" nil)
+                 (string :tag "Key sequence"))
+  :group 'emacs-openclaw)
+
 ;; ============================================================================
 ;; Internal Variables
 ;; ============================================================================
