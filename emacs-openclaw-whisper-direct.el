@@ -65,7 +65,11 @@
 Returns the process or nil if recording failed."
   (condition-case err
       (let* ((recorder-cmd (if (executable-find "ffmpeg")
-                               (format "ffmpeg -f avfoundation -i ':default' -acodec pcm_s16le -ar 16000 %s"
+                               ;; AVFoundation syntax: -f avfoundation -i '<video>:<audio>'
+                               ;; For audio-only: use -i ':1' for index 1 audio device
+                               ;; On macOS: ':0' = built-in input (usually MacBook Pro Microphone)
+                               ;; If :0 doesn't work, can try ':1' or explicit device index
+                               (format "ffmpeg -f avfoundation -i ':0' -c:a pcm_s16le -ar 16000 -ac 1 %s -y"
                                        (shell-quote-argument wav-file))
                              (format "sox -d -r 16000 -c 1 -b 16 %s --no-show-progress"
                                      (shell-quote-argument wav-file))))
@@ -100,15 +104,18 @@ Returns the transcribed text or nil on failure."
                        (buffer-string))))
         (when (and output (not (string-empty-p output)))
           (let ((json-object-type 'plist)
-                (json-array-type 'list)
-                ;; Remove problematic fields that contain scientific notation
-                ;; (Emacs json-read can't parse e.g., 6.021440984715909e-11)
-                (sanitized (replace-regexp-in-string 
-                            ",\"\\(no_speech_prob\\|avg_logprob\\|compression_ratio\\|temperature\\)\":[^,}]*" 
-                            "" output)))
-            (let ((json-data (json-read-from-string sanitized)))
-              (when (listp json-data)
-                (string-trim (or (plist-get json-data :text) "")))))))
+                (json-array-type 'list))
+            ;; Parse the JSON directly — Whisper output is well-formed
+            ;; The :text field contains the transcription, segments array is optional
+            (condition-case nil
+                (let* ((json-data (json-read-from-string output))
+                       (text (plist-get json-data :text)))
+                  (when text (string-trim text)))
+              (error
+               ;; If JSON parsing fails, try extracting text field manually
+               (let ((text-match (string-match "\"text\":\\s *\"\\([^\"]*\\)\"" output)))
+                 (when text-match
+                   (match-string 1 output))))))))
     (error
      (message "Transcription failed: %s" (error-message-string err))
      nil)))
