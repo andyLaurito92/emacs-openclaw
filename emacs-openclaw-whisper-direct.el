@@ -105,6 +105,7 @@
 ;; Main Command
 ;; ============================================================================
 
+;;;###autoload
 (defun emacs-openclaw-transcribe-speech ()
   "Record and transcribe speech at point."
   (interactive)
