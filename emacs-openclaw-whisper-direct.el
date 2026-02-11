@@ -50,6 +50,13 @@
 ;; Helpers
 ;; ============================================================================
 
+(defun emacs-openclaw--list-audio-devices ()
+  "List available audio devices on macOS using ffmpeg."
+  (interactive)
+  (with-temp-buffer
+    (call-process "ffmpeg" nil t nil "-f" "avfoundation" "-list_devices" "true" "-i" "")
+    (message (buffer-string))))
+
 (defun emacs-openclaw--whisper-binary-exists-p ()
   "Check if the Whisper binary exists and is executable."
   (and (file-executable-p emacs-openclaw-whisper-binary)
@@ -66,10 +73,10 @@ Returns the process or nil if recording failed."
   (condition-case err
       (let* ((recorder-cmd (if (executable-find "ffmpeg")
                                ;; AVFoundation syntax: -f avfoundation -i '<video>:<audio>'
-                               ;; For audio-only: use -i ':1' for index 1 audio device
-                               ;; On macOS: ':0' = built-in input (usually MacBook Pro Microphone)
-                               ;; If :0 doesn't work, can try ':1' or explicit device index
-                               (format "ffmpeg -f avfoundation -i ':0' -c:a pcm_s16le -ar 16000 -ac 1 %s -y"
+                               ;; On macOS with multiple audio devices, use index directly.
+                               ;; To find your device: ffmpeg -f avfoundation -list_devices true -i ""
+                               ;; Common devices: :0 = Microsoft Teams, :1 = External Mic, :2 = MacBook Pro Mic
+                               (format "ffmpeg -f avfoundation -i ':2' -c:a pcm_s16le -ar 16000 -ac 1 %s -y"
                                        (shell-quote-argument wav-file))
                              (format "sox -d -r 16000 -c 1 -b 16 %s --no-show-progress"
                                      (shell-quote-argument wav-file))))
