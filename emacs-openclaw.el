@@ -16,6 +16,9 @@
 ;; Optional features:
 ;; - Speech-to-text support via whisper.el (disabled by default)
 ;;   Set `emacs-openclaw-allow-speech-to-text' to t to enable.
+;; - Text-to-speech support via macOS `say` command (disabled by default)
+;;   Set `emacs-openclaw-tts-enabled' to t or use M-x emacs-openclaw-tts-toggle
+;;   to enable audio playback of responses.
 
 (require 'emacs-openclaw-config)
 (require 'emacs-openclaw-websocket)
