@@ -92,7 +92,7 @@ Returns the process or nil if recording failed."
   (when emacs-openclaw--whisper-recording-process
     (interrupt-process emacs-openclaw--whisper-recording-process)
     (setq emacs-openclaw--whisper-recording-process nil))
-  (sit-for 0.2))  ; Give ffmpeg/sox time to finalize the file
+  (sit-for 2.0))  ; Give ffmpeg/sox time to finalize the file
 
 (defun emacs-openclaw--whisper-transcribe-file (wav-file)
   "Transcribe WAV-FILE using Whisper CLI.
