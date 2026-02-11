@@ -63,13 +63,15 @@
 
 (defun emacs-openclaw--log (msg &optional face)
   "Log MSG to the OpenClaw buffer with optional FACE."
-  (with-current-buffer (get-buffer-create emacs-openclaw-buffer-name)
-    (let ((inhibit-read-only t))
-      (save-excursion
-        (goto-char (point-max))
-        (insert (if face (propertize msg 'face face) msg)))
-      (let ((window (get-buffer-window)))
-        (when window (set-window-point window (point-max)))))))
+  (when-let ((buf (get-buffer emacs-openclaw-buffer-name)))
+    (when (buffer-live-p buf)
+      (with-current-buffer buf
+        (let ((inhibit-read-only t))
+          (save-excursion
+            (goto-char (point-max))
+            (insert (if face (propertize msg 'face face) msg)))
+          (let ((window (get-buffer-window)))
+            (when window (set-window-point window (point-max)))))))))
 
 ;; ============================================================================
 ;; Chat Request Handling

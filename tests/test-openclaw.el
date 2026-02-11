@@ -53,3 +53,22 @@
         (emacs-openclaw--session-key-cache "cached-key"))
     ;; Should prefer explicit over cached
     (should (equal (emacs-openclaw--get-session-key) "explicit-key"))))
+
+(ert-deftest test-log-with-deleted-buffer ()
+  "Test that emacs-openclaw--log handles deleted buffers gracefully."
+  (let ((buf-name "*OpenClaw-Test-Buffer*"))
+    ;; Temporarily override the buffer name for testing
+    (let ((emacs-openclaw-buffer-name buf-name))
+      ;; Create and then kill the buffer
+      (with-current-buffer (get-buffer-create buf-name)
+        (insert "test"))
+      (kill-buffer buf-name)
+      ;; This should not raise an error even though the buffer is deleted
+      (should-not
+       (condition-case err
+           (progn
+             (emacs-openclaw--log "test message" nil)
+             nil)  ;; Return nil if no error
+         (error err)))  ;; Return the error if one occurs
+      ;; Verify buffer is still not alive
+      (should-not (buffer-live-p (get-buffer buf-name))))))
