@@ -68,7 +68,9 @@
 
 (defun emacs-openclaw--whisper-temp-file ()
   "Generate a temporary WAV file path."
-  (make-temp-file "openclaw-whisper-" nil ".wav"))
+  (let ((wav-file (make-temp-file "openclaw-whisper-" nil ".wav")))
+    (message "[WHISPER DEBUG] Temp file created: %s" wav-file)
+    wav-file))
 
 (defun emacs-openclaw--whisper-record-start (wav-file)
   "Start recording audio to WAV-FILE using ffmpeg or sox."
@@ -80,21 +82,29 @@
                       (shell-quote-argument wav-file))
             (format "sox -d -r 16000 -c 1 -b 16 %s --no-show-progress"
                     (shell-quote-argument wav-file)))))
+    (message "[WHISPER DEBUG] Recording command: %s" recorder-cmd)
+    (message "[WHISPER DEBUG] Audio device: %s" emacs-openclaw-audio-device)
     (let ((proc (start-process-shell-command "emacs-openclaw-record" nil recorder-cmd)))
+      (message "[WHISPER DEBUG] Recording process started (PID: %s)" (process-id proc))
       (set-process-query-on-exit-flag proc nil)
       proc)))
 
 (defun emacs-openclaw--whisper-stop-recording (proc)
   "Stop the recording process safely by sending 'q' to ffmpeg."
+  (message "[WHISPER DEBUG] Stopping recording process...")
   (when (and proc (process-live-p proc))
     ;; Send 'q' + newline to ffmpeg to gracefully stop and finalize the file
+    (message "[WHISPER DEBUG] Sending 'q' to ffmpeg...")
     (process-send-string proc "q\n")
     (accept-process-output proc 2 nil t)
     (when (process-live-p proc)
+      (message "[WHISPER DEBUG] Process still alive, interrupting...")
       (interrupt-process proc)
       (accept-process-output proc 1 nil t))
     (when (process-live-p proc)
-      (delete-process proc))))
+      (message "[WHISPER DEBUG] Process still alive, deleting...")
+      (delete-process proc)))
+  (message "[WHISPER DEBUG] Recording stopped"))
 
 (defun emacs-openclaw--whisper-transcribe-file (wav-file)
   "Transcribe WAV-FILE using Whisper CLI."
@@ -109,17 +119,29 @@
     
     (setq cmd-args (append cmd-args (list wav-file)))
     
+    (message "[WHISPER DEBUG] Transcribing file: %s" wav-file)
+    (message "[WHISPER DEBUG] Output JSON: %s" json-output-file)
+    (message "[WHISPER DEBUG] Whisper binary: %s" emacs-openclaw-whisper-binary)
+    (message "[WHISPER DEBUG] Model: %s" emacs-openclaw-whisper-model)
     (message "⏳ Whisper is processing...")
     (with-temp-buffer
       (let ((exit-code (apply #'call-process emacs-openclaw-whisper-binary nil t nil cmd-args)))
+        (message "[WHISPER DEBUG] Whisper exit code: %d" exit-code)
         (if (not (zerop exit-code))
-            (progn (message "Whisper Error (Exit %d): %s" exit-code (buffer-string)) nil)
+            (progn 
+              (message "[WHISPER DEBUG] Whisper stderr: %s" (buffer-string))
+              (message "Whisper Error (Exit %d): %s" exit-code (buffer-string)) 
+              nil)
           (if (not (file-exists-p json-output-file))
-              (progn (message "Whisper failed to create JSON output.") nil)
+              (progn 
+                (message "[WHISPER DEBUG] JSON output file not found: %s" json-output-file)
+                (message "Whisper failed to create JSON output.") 
+                nil)
             (with-temp-buffer
               (insert-file-contents json-output-file)
               (let* ((json-data (json-read-from-string (buffer-string)))
                      (text (plist-get json-data :text)))
+                (message "[WHISPER DEBUG] Transcribed text: %s" text)
                 (delete-file json-output-file)
                 (when text (string-trim text))))))))))
 
@@ -149,8 +171,16 @@
             
             (if (or (not (file-exists-p wav-file))
                     (< (file-attribute-size (file-attributes wav-file)) 100))
-                (message "❌ Recording failed: Audio file empty or too small.")
+                (progn
+                  (message "[WHISPER DEBUG] File check failed:")
+                  (message "[WHISPER DEBUG]   File exists: %s" (file-exists-p wav-file))
+                  (message "[WHISPER DEBUG]   File size: %s bytes" 
+                           (if (file-exists-p wav-file) 
+                               (file-attribute-size (file-attributes wav-file)) 
+                               "N/A"))
+                  (message "❌ Recording failed: Audio file empty or too small."))
               
+              (message "[WHISPER DEBUG] File OK, transcribing...")
               (let ((transcript (emacs-openclaw--whisper-transcribe-file wav-file)))
                 (if (and transcript (> (length transcript) 0))
                     (with-current-buffer buffer
