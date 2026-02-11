@@ -88,18 +88,31 @@
       (let ((exit-code (apply #'call-process emacs-openclaw-whisper-binary nil t nil cmd-args)))
         (if (or (not (zerop exit-code)) (not (file-exists-p json-file)))
             (progn
-              (message "[DEBUG] Whisper Failed. Stderr: %s" (buffer-string))
+              (message "[WHISPER DEBUG] Whisper Failed. Stderr: %s" (buffer-string))
               nil)
           (let* ((json-object-type 'plist)
-                 (json-data (json-read-file json-file))
+                 (raw-content (with-temp-buffer 
+                                (insert-file-contents json-file) 
+                                (buffer-string)))
+                 (json-data (json-read-from-string raw-content))
                  (text (plist-get json-data :text)))
-            ;; Fallback: If :text is empty, concatenate segments
-            (unless (and text (> (length (string-trim text)) 0))
+
+            ;; --- NEW LOGGING ---
+            (message "[WHISPER DEBUG] RAW JSON CONTENT: %s" raw-content)
+            
+            ;; Fallback: If :text is empty or just "You", try segments
+            (when (or (not text) (string-equal (string-trim text) "You"))
+              (message "[WHISPER DEBUG] Primary text field was '%s', checking segments..." text)
               (let ((segments (plist-get json-data :segments)))
                 (setq text (mapconcat (lambda (s) (plist-get s :text)) segments " "))))
             
             (when (file-exists-p json-file) (delete-file json-file))
-            (when text (string-trim text))))))))
+            
+            (if (and text (> (length (string-trim text)) 0))
+                (string-trim text)
+              (progn
+                (message "[WHISPER DEBUG] Failed to extract any text from JSON.")
+                nil))))))))
 
 ;; ============================================================================
 ;; Main Command
