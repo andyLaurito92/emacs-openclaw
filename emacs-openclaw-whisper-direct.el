@@ -105,10 +105,10 @@ Returns the transcribed text or nil on failure."
                 ;; (Emacs json-read can't parse e.g., 6.021440984715909e-11)
                 (sanitized (replace-regexp-in-string 
                             ",\"\\(no_speech_prob\\|avg_logprob\\|compression_ratio\\|temperature\\)\":[^,}]*" 
-                            "" output))
-                (json-data (json-read-from-string sanitized)))
-            (when (listp json-data)
-              (string-trim (or (plist-get json-data :text) ""))))))
+                            "" output)))
+            (let ((json-data (json-read-from-string sanitized)))
+              (when (listp json-data)
+                (string-trim (or (plist-get json-data :text) "")))))))
     (error
      (message "Transcription failed: %s" (error-message-string err))
      nil)))
