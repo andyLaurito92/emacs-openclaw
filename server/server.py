@@ -13,11 +13,8 @@ from microsoft_server import router as microsoft_router
 log_file = "logs.txt"
 logging.basicConfig(
     level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(log_file),
-        logging.StreamHandler()
-    ]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.FileHandler(log_file), logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
 logger.info("Server starting up...")
@@ -36,21 +33,21 @@ TOKEN_PATH = "token.json"
 if not os.path.exists(TOKEN_PATH):
     logger.info("token.json not found, starting OAuth flow...")
     if not os.path.exists(CLIENT_SECRET_PATH):
-        logger.error(f"client_secret.json not found at {CLIENT_SECRET_PATH}! Cannot authenticate.")
+        logger.error(
+            f"client_secret.json not found at {CLIENT_SECRET_PATH}! Cannot authenticate."
+        )
         raise FileNotFoundError(
             f"client_secret.json is required for OAuth authentication. "
             f"Expected at: {CLIENT_SECRET_PATH} "
             f"Please follow the setup instructions in README-SERVER.md"
         )
-    
-    flow = InstalledAppFlow.from_client_secrets_file(
-        CLIENT_SECRET_PATH, SCOPES
-    )
+
+    flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRET_PATH, SCOPES)
     creds = flow.run_local_server(port=8080, open_browser=True)
-    
+
     with open(TOKEN_PATH, "w") as f:
         f.write(creds.to_json())
-    
+
     logger.info("OAuth complete, token saved to token.json")
 else:
     logger.info("Found existing token.json, skipping OAuth flow")
@@ -74,14 +71,11 @@ app.include_router(microsoft_router)
 # Meta Endpoints
 # =========================
 
+
 @app.get("/health")
 def health_check():
     """Health check endpoint to verify server is running."""
-    return {
-        "status": "ok",
-        "service": "OpenClaw Tools Server",
-        "version": "1.0.0"
-    }
+    return {"status": "ok", "service": "OpenClaw Tools Server", "version": "1.0.0"}
 
 
 @app.get("/tools")
@@ -99,8 +93,8 @@ def list_tools():
                 "parameters": {
                     "to": "string (email address)",
                     "subject": "string",
-                    "body": "string"
-                }
+                    "body": "string",
+                },
             },
             {
                 "provider": "google",
@@ -108,9 +102,7 @@ def list_tools():
                 "endpoint": "/google/search-emails",
                 "method": "GET",
                 "description": "Search emails using Gmail query syntax",
-                "parameters": {
-                    "query": "string (e.g., 'from:user@example.com')"
-                }
+                "parameters": {"query": "string (e.g., 'from:user@example.com')"},
             },
             {
                 "provider": "google",
@@ -118,9 +110,7 @@ def list_tools():
                 "endpoint": "/google/emails",
                 "method": "GET",
                 "description": "List recent emails",
-                "parameters": {
-                    "limit": "integer (default: 10)"
-                }
+                "parameters": {"limit": "integer (default: 10)"},
             },
             {
                 "provider": "google",
@@ -128,9 +118,7 @@ def list_tools():
                 "endpoint": "/google/email/{message_id}",
                 "method": "DELETE",
                 "description": "Delete (trash) an email by message ID",
-                "parameters": {
-                    "message_id": "string (email ID)"
-                }
+                "parameters": {"message_id": "string (email ID)"},
             },
             {
                 "provider": "google",
@@ -144,8 +132,8 @@ def list_tools():
                     "end_iso": "string (ISO-8601 datetime)",
                     "description": "string (optional)",
                     "timezone": "string (default: UTC)",
-                    "attendees": "array of email addresses (optional)"
-                }
+                    "attendees": "array of email addresses (optional)",
+                },
             },
             {
                 "provider": "google",
@@ -153,9 +141,7 @@ def list_tools():
                 "endpoint": "/google/calendar-event/{event_id}",
                 "method": "DELETE",
                 "description": "Delete a Google Calendar event by ID",
-                "parameters": {
-                    "event_id": "string (calendar event ID)"
-                }
+                "parameters": {"event_id": "string (calendar event ID)"},
             },
             {
                 "provider": "google",
@@ -165,8 +151,8 @@ def list_tools():
                 "description": "List files in Google Drive",
                 "parameters": {
                     "query": "string (optional filter, e.g., \"name contains 'document'\")",
-                    "limit": "integer (default: 10)"
-                }
+                    "limit": "integer (default: 10)",
+                },
             },
             {
                 "provider": "google",
@@ -176,8 +162,8 @@ def list_tools():
                 "description": "Search files in Google Drive",
                 "parameters": {
                     "query": "string (search term)",
-                    "limit": "integer (default: 10)"
-                }
+                    "limit": "integer (default: 10)",
+                },
             },
             {
                 "provider": "google",
@@ -185,9 +171,7 @@ def list_tools():
                 "endpoint": "/google/drive/file/{file_id}",
                 "method": "GET",
                 "description": "Get file metadata from Google Drive",
-                "parameters": {
-                    "file_id": "string (file ID)"
-                }
+                "parameters": {"file_id": "string (file ID)"},
             },
             {
                 "provider": "google",
@@ -195,9 +179,7 @@ def list_tools():
                 "endpoint": "/google/drive/file/{file_id}/read",
                 "method": "GET",
                 "description": "Read file content from Google Drive (supports Docs, Sheets, text files)",
-                "parameters": {
-                    "file_id": "string (file ID)"
-                }
+                "parameters": {"file_id": "string (file ID)"},
             },
             {
                 "provider": "google",
@@ -209,8 +191,8 @@ def list_tools():
                     "name": "string (file name)",
                     "content": "string (file content)",
                     "parent_folder_id": "string (optional)",
-                    "mime_type": "string (default: 'text/plain')"
-                }
+                    "mime_type": "string (default: 'text/plain')",
+                },
             },
             {
                 "provider": "google",
@@ -220,8 +202,8 @@ def list_tools():
                 "description": "Create a folder in Google Drive",
                 "parameters": {
                     "name": "string (folder name)",
-                    "parent_folder_id": "string (optional)"
-                }
+                    "parent_folder_id": "string (optional)",
+                },
             },
             {
                 "provider": "google",
@@ -231,8 +213,8 @@ def list_tools():
                 "description": "Update file content in Google Drive",
                 "parameters": {
                     "file_id": "string (file ID)",
-                    "content": "string (new content)"
-                }
+                    "content": "string (new content)",
+                },
             },
             {
                 "provider": "google",
@@ -240,9 +222,7 @@ def list_tools():
                 "endpoint": "/google/drive/file/{file_id}",
                 "method": "DELETE",
                 "description": "Delete a file from Google Drive",
-                "parameters": {
-                    "file_id": "string (file ID)"
-                }
+                "parameters": {"file_id": "string (file ID)"},
             },
             # MICROSOFT 365 TOOLS
             {
@@ -254,8 +234,8 @@ def list_tools():
                 "parameters": {
                     "to": "string (email address)",
                     "subject": "string",
-                    "body": "string"
-                }
+                    "body": "string",
+                },
             },
             {
                 "provider": "microsoft",
@@ -265,8 +245,8 @@ def list_tools():
                 "description": "Search emails using Microsoft Graph query syntax",
                 "parameters": {
                     "query": "string (search term)",
-                    "limit": "integer (default: 10)"
-                }
+                    "limit": "integer (default: 10)",
+                },
             },
             {
                 "provider": "microsoft",
@@ -274,9 +254,7 @@ def list_tools():
                 "endpoint": "/microsoft/emails",
                 "method": "GET",
                 "description": "List recent emails from Outlook inbox",
-                "parameters": {
-                    "limit": "integer (default: 10)"
-                }
+                "parameters": {"limit": "integer (default: 10)"},
             },
             {
                 "provider": "microsoft",
@@ -284,9 +262,7 @@ def list_tools():
                 "endpoint": "/microsoft/email/{message_id}",
                 "method": "DELETE",
                 "description": "Delete (move to trash) an email by message ID",
-                "parameters": {
-                    "message_id": "string (email ID)"
-                }
+                "parameters": {"message_id": "string (email ID)"},
             },
             {
                 "provider": "microsoft",
@@ -294,9 +270,7 @@ def list_tools():
                 "endpoint": "/microsoft/events",
                 "method": "GET",
                 "description": "List upcoming calendar events from Outlook",
-                "parameters": {
-                    "limit": "integer (default: 10)"
-                }
+                "parameters": {"limit": "integer (default: 10)"},
             },
             {
                 "provider": "microsoft",
@@ -309,8 +283,8 @@ def list_tools():
                     "start_iso": "string (ISO-8601 datetime)",
                     "end_iso": "string (ISO-8601 datetime)",
                     "description": "string (optional)",
-                    "attendees": "array of email addresses (optional)"
-                }
+                    "attendees": "array of email addresses (optional)",
+                },
             },
             {
                 "provider": "microsoft",
@@ -318,14 +292,13 @@ def list_tools():
                 "endpoint": "/microsoft/calendar-event/{event_id}",
                 "method": "DELETE",
                 "description": "Delete a calendar event by ID",
-                "parameters": {
-                    "event_id": "string (calendar event ID)"
-                }
-            }
-        ]
+                "parameters": {"event_id": "string (calendar event ID)"},
+            },
+        ],
     }
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="127.0.0.1", port=3333)

@@ -15,7 +15,7 @@ from microsoft_tools import (
     microsoft_delete_email,
     microsoft_create_calendar_event,
     microsoft_delete_calendar_event,
-    microsoft_list_calendar_events
+    microsoft_list_calendar_events,
 )
 
 router = APIRouter(prefix="/microsoft", tags=["microsoft"])
@@ -27,11 +27,12 @@ def _check_auth():
     if not os.path.exists("microsoft_token.json"):
         raise HTTPException(
             status_code=401,
-            detail="Microsoft 365 not authenticated. Run: python3 microsoft_auth.py"
+            detail="Microsoft 365 not authenticated. Run: python3 microsoft_auth.py",
         )
 
 
 # ==================== EMAIL ENDPOINTS ====================
+
 
 @router.get("/emails")
 def list_emails(limit: int = 10):
@@ -91,6 +92,7 @@ def delete_email(message_id: str):
 
 # ==================== CALENDAR ENDPOINTS ====================
 
+
 @router.get("/events")
 def list_events(limit: int = 10):
     """List upcoming calendar events from Outlook."""
@@ -111,7 +113,7 @@ def create_event(
     start_iso: str,
     end_iso: str,
     description: Optional[str] = None,
-    attendees: Optional[List[str]] = None
+    attendees: Optional[List[str]] = None,
 ):
     """Create a calendar event in Outlook."""
     try:
@@ -121,7 +123,7 @@ def create_event(
             start_iso=start_iso,
             end_iso=end_iso,
             description=description,
-            attendees=attendees
+            attendees=attendees,
         )
         return result
     except HTTPException:
