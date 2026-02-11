@@ -30,7 +30,7 @@
   :type '(choice (const nil) string)
   :group 'emacs-openclaw)
 
-(defcustom emacs-openclaw-audio-device ":2"
+(defcustom emacs-openclaw-audio-device ":1"
   "The ffmpeg audio device index."
   :type 'string
   :group 'emacs-openclaw)
