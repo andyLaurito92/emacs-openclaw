@@ -176,6 +176,10 @@ and inserts the text at point."
     (message "emacs-openclaw: Speech-to-text bound to %s" 
              emacs-openclaw-whisper-keybinding)))
 
+;; Alias for compatibility with emacs-openclaw-mode.el
+(defalias 'emacs-openclaw--setup-whisper-keybindings 
+          'emacs-openclaw--setup-whisper-keybindings-direct)
+
 ;; Auto-setup when loaded
 (when (and emacs-openclaw-allow-speech-to-text
            emacs-openclaw-whisper-keybinding)

@@ -36,13 +36,13 @@
 ;; ============================================================================
 
 (defun emacs-openclaw--setup-whisper ()
-  "Conditionally load and setup whisper.el integration if enabled."
+  "Conditionally load and setup whisper CLI integration if enabled."
   (require 'emacs-openclaw-config)
   (when (and (boundp 'emacs-openclaw-allow-speech-to-text)
              emacs-openclaw-allow-speech-to-text)
     (condition-case err
         (progn
-          (require 'emacs-openclaw-whisper)
+          (require 'emacs-openclaw-whisper-direct)
           (emacs-openclaw--setup-whisper-keybindings emacs-openclaw-mode-map))
       (error
        (message "emacs-openclaw: Failed to load whisper integration: %s" err)))))
