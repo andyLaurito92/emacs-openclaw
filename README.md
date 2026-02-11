@@ -1,5 +1,18 @@
 # emacs-openclaw
 
+## important note
+
+Regarding whisper, for now we need to run emacs like this from terminal
+
+```
+/Applications/Emacs.app/Contents/MacOS/Emacs &
+```
+so mic permissions are inherited from iterm. TODO: Fix the above so we don't ahve to do it :)
+
+### How to test it from emacs
+
+Run in vterm -> sox -d test.wav and later open test.wav -> If you don't listen anything, emacs doesn't have mic permissions yet :)
+
 Talk to OpenClaw directly from Emacs. A minor mode + FastAPI backend for seamless AI assistance in your editor.
 
 ## Features
