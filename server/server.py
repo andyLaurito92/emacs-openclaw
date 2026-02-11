@@ -25,37 +25,9 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-# Get client_secret path from environment or use default
+# Configuration constants
 CLIENT_SECRET_PATH = os.getenv("OPENCLAW_CLIENT_SECRET", "client_secret.json")
 TOKEN_PATH = "token.json"
-
-# Skip OAuth flow if OPENCLAW_SKIP_AUTH is set (for testing)
-SKIP_AUTH = os.getenv("OPENCLAW_SKIP_AUTH", "").lower() in ("1", "true", "yes")
-
-# Only run OAuth flow if token doesn't exist and not in test mode
-if not SKIP_AUTH and not os.path.exists(TOKEN_PATH):
-    logger.info("token.json not found, starting OAuth flow...")
-    if not os.path.exists(CLIENT_SECRET_PATH):
-        logger.error(
-            f"client_secret.json not found at {CLIENT_SECRET_PATH}! Cannot authenticate."
-        )
-        raise FileNotFoundError(
-            f"client_secret.json is required for OAuth authentication. "
-            f"Expected at: {CLIENT_SECRET_PATH} "
-            f"Please follow the setup instructions in README-SERVER.md"
-        )
-
-    flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRET_PATH, SCOPES)
-    creds = flow.run_local_server(port=8080, open_browser=True)
-
-    with open(TOKEN_PATH, "w") as f:
-        f.write(creds.to_json())
-
-    logger.info("OAuth complete, token saved to token.json")
-elif not SKIP_AUTH:
-    logger.info("Found existing token.json, skipping OAuth flow")
-else:
-    logger.info("OPENCLAW_SKIP_AUTH is set, skipping OAuth flow")
 
 
 app = FastAPI(
@@ -305,5 +277,28 @@ def list_tools():
 
 if __name__ == "__main__":
     import uvicorn
+
+    # Run OAuth flow if token doesn't exist
+    if not os.path.exists(TOKEN_PATH):
+        logger.info("token.json not found, starting OAuth flow...")
+        if not os.path.exists(CLIENT_SECRET_PATH):
+            logger.error(
+                f"client_secret.json not found at {CLIENT_SECRET_PATH}! Cannot authenticate."
+            )
+            raise FileNotFoundError(
+                f"client_secret.json is required for OAuth authentication. "
+                f"Expected at: {CLIENT_SECRET_PATH} "
+                f"Please follow the setup instructions in README-SERVER.md"
+            )
+
+        flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRET_PATH, SCOPES)
+        creds = flow.run_local_server(port=8080, open_browser=True)
+
+        with open(TOKEN_PATH, "w") as f:
+            f.write(creds.to_json())
+
+        logger.info("OAuth complete, token saved to token.json")
+    else:
+        logger.info("Found existing token.json, skipping OAuth flow")
 
     uvicorn.run(app, host="127.0.0.1", port=3333)

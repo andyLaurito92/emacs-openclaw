@@ -3,13 +3,9 @@ Tests for the refactored Google tools server.
 Tests the router structure and endpoint routing.
 """
 
-import os
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import Mock, patch, MagicMock
-
-# Set environment variable before importing server to skip OAuth initialization
-os.environ.setdefault("OPENCLAW_SKIP_AUTH", "true")
 
 from server import app
 
