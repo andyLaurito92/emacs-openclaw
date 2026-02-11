@@ -11,6 +11,7 @@
 (require 'emacs-openclaw-config)
 (require 'emacs-openclaw-websocket)
 (require 'emacs-openclaw-server)
+(require 'emacs-openclaw-tts)
 
 ;; Load mode module
 (require 'emacs-openclaw-mode)
@@ -92,7 +93,8 @@
    prompt
    (lambda (response)
      (let ((ok (alist-get 'ok response))
-           (msg-id (alist-get 'id response)))
+           (msg-id (alist-get 'id response))
+           (response-text nil))
        (if ok
            (progn
              ;; Only extract from res if no agent events were received
@@ -101,15 +103,18 @@
                (let* ((payload (alist-get 'payload response))
                       (result (alist-get 'result payload))
                       (payloads (alist-get 'payloads result))
-                      (first-payload (when (listp payloads) (car payloads)))
-                      (response-text (when first-payload (alist-get 'text first-payload))))
+                      (first-payload (when (listp payloads) (car payloads))))
+                 (setq response-text (when first-payload (alist-get 'text first-payload)))
                  (when response-text
                    (emacs-openclaw--log response-text nil)
                    (emacs-openclaw--log "\n" nil)
                    (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow)
                    (emacs-openclaw--log "\n" nil))))
              ;; Clean up tracking
-             (remhash msg-id emacs-openclaw--active-requests))
+             (remhash msg-id emacs-openclaw--active-requests)
+             ;; Speak the response if TTS is enabled
+             (when response-text
+               (emacs-openclaw-tts-speak-response response-text)))
          (let ((error-data (alist-get 'error response)))
            (emacs-openclaw--log (format "\n[Error]: %s\n" error-data) 'error)
            (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow)))))))
