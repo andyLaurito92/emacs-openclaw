@@ -76,7 +76,7 @@ Returns the process or nil if recording failed."
                                ;; On macOS with multiple audio devices, use index directly.
                                ;; To find your device: ffmpeg -f avfoundation -list_devices true -i ""
                                ;; Common devices: :0 = Microsoft Teams, :1 = External Mic, :2 = MacBook Pro Mic
-                               (format "ffmpeg -f avfoundation -i ':1' -c:a pcm_s16le -ar 16000 -ac 1 %s -y"
+                               (format "ffmpeg -f avfoundation -i ':1' -c:a pcm_s16le -ar 16000 -ac 1 %s -y 2>&1"
                                        (shell-quote-argument wav-file))
                              (format "sox -d -r 16000 -c 1 -b 16 %s --no-show-progress"
                                      (shell-quote-argument wav-file))))

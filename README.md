@@ -7,7 +7,7 @@ Talk to OpenClaw directly from Emacs. A minor mode + FastAPI backend for seamles
 - 💬 **Chat with OpenClaw** — Interactive chat buffer right in Emacs with streaming responses
 - 📧 **Gmail Integration** — List, search, and delete emails (backend included)
 - 📅 **Google Calendar** — Create and manage calendar events
-- 🎤 **Speech-to-Text** — Optional speech transcription via whisper.el (disabled by default)
+- 🎤 **Speech-to-Text** — Optional audio transcription via OpenAI Whisper CLI (disabled by default)
 - 🔌 **WebSocket-based** — Real-time streaming chat via OpenClaw Gateway WebSocket protocol
 - 🚀 **Auto-start Server** — Server starts automatically when needed (optional)
 
@@ -208,14 +208,21 @@ You can also customize the welcome message and instructions:
 
 ### Speech-to-Text (Optional)
 
-Enable optional speech transcription via whisper.el:
+Enable optional audio transcription via the OpenAI Whisper CLI:
 
 ```elisp
-;; Enable speech-to-text (requires whisper.el, Whisper CLI, and ffmpeg)
+;; Enable speech-to-text (requires Whisper CLI and ffmpeg)
 (setq emacs-openclaw-allow-speech-to-text t)
 
 ;; Customize transcription keybinding (default: "C-c C-s")
 (setq emacs-openclaw-whisper-keybinding "C-c C-s")
+
+;; Customize Whisper model (default: "base")
+;; Options: tiny, base, small, medium, large
+(setq emacs-openclaw-whisper-model "base")
+
+;; Optional: Specify language (default: auto-detect)
+;; (setq emacs-openclaw-whisper-language "en")
 ```
 
 For setup instructions, see [SPEECH_TO_TEXT.md](SPEECH_TO_TEXT.md).
