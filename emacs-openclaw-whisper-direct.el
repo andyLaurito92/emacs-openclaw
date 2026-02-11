@@ -71,7 +71,8 @@
   "Start recording audio to WAV-FILE using ffmpeg/sox.
 Returns the process or nil if recording failed."
   (condition-case err
-      (let* ((recorder-cmd (if (executable-find "ffmpeg")
+      (let* ((has-ffmpeg (executable-find "ffmpeg"))
+             (recorder-cmd (if has-ffmpeg
                                ;; AVFoundation syntax: -f avfoundation -i '<video>:<audio>'
                                ;; On macOS with multiple audio devices, use index directly.
                                ;; To find your device: ffmpeg -f avfoundation -list_devices true -i ""
@@ -82,6 +83,10 @@ Returns the process or nil if recording failed."
                                      (shell-quote-argument wav-file))))
              (proc (start-process "emacs-openclaw-record" nil "/bin/sh" "-c" recorder-cmd)))
         (message "🎙️ Recording started... (Press C-g to stop)")
+        (message "[DEBUG] ffmpeg available: %s" has-ffmpeg)
+        (message "[DEBUG] recorder cmd: %s" recorder-cmd)
+        (message "[DEBUG] output file: %s" wav-file)
+        (message "[DEBUG] process created: %s" proc)
         proc)
     (error
      (message "Failed to start recording: %s" (error-message-string err))
@@ -89,60 +94,89 @@ Returns the process or nil if recording failed."
 
 (defun emacs-openclaw--whisper-stop-recording ()
   "Stop the current recording process."
+  (message "[DEBUG] Stopping recording, process: %s" emacs-openclaw--whisper-recording-process)
   (when emacs-openclaw--whisper-recording-process
+    (message "[DEBUG] Process status before interrupt: %s" 
+             (process-status emacs-openclaw--whisper-recording-process))
     (interrupt-process emacs-openclaw--whisper-recording-process)
+    (message "[DEBUG] Interrupted, waiting for process to finish...")
     (setq emacs-openclaw--whisper-recording-process nil))
-  (sit-for 2.0))  ; Give ffmpeg/sox time to finalize the file
+  (message "[DEBUG] Waiting 2s for ffmpeg to finalize file...")
+  (sit-for 2.0)
+  (message "[DEBUG] Done waiting"))
 
 (defun emacs-openclaw--whisper-transcribe-file (wav-file)
   "Transcribe WAV-FILE using Whisper CLI.
-Returns the transcribed text or nil on failure."
+Returns the transcribed text or nil on failure.
+
+Note: Whisper writes a .json file to the current directory, not stdout."
   (condition-case err
       (let* ((cmd-args (list emacs-openclaw-whisper-binary
                              "--model" emacs-openclaw-whisper-model
-                             "--output_format" "json"
-                             "--quiet"))
+                             "--output_format" "json"))
              (cmd-args (if emacs-openclaw-whisper-language
                            (append cmd-args (list "--language" emacs-openclaw-whisper-language))
                          cmd-args))
              (cmd-args (append cmd-args (list wav-file)))
              (stdout-buffer (get-buffer-create " *whisper-out*"))
-             (stderr-buffer (get-buffer-create " *whisper-err*")))
+             (stderr-buffer (get-buffer-create " *whisper-err*"))
+             ;; Whisper will create a .json file: replace .wav with .json
+             (json-output-file (concat (file-name-sans-extension wav-file) ".json")))
+        
+        (message "[DEBUG] Whisper transcribe: binary=%s, model=%s, file=%s" 
+                 emacs-openclaw-whisper-binary emacs-openclaw-whisper-model wav-file)
+        (message "[DEBUG] Full cmd args: %s" cmd-args)
+        (message "[DEBUG] Expected JSON output: %s" json-output-file)
         
         ;; Clear buffers
         (with-current-buffer stdout-buffer (erase-buffer))
         (with-current-buffer stderr-buffer (erase-buffer))
         
-        ;; Call Whisper with separate stdout/stderr
-        (apply #'call-process (car cmd-args) nil 
-               (list stdout-buffer stderr-buffer) nil (cdr cmd-args))
+        ;; Remove any stale JSON output file
+        (when (file-exists-p json-output-file)
+          (delete-file json-output-file)
+          (message "[DEBUG] Removed stale JSON file"))
         
-        ;; Get output
-        (let ((output (with-current-buffer stdout-buffer (buffer-string)))
-              (stderr (with-current-buffer stderr-buffer (buffer-string))))
+        ;; Call Whisper with separate stdout/stderr
+        (let ((exit-code (apply #'call-process (car cmd-args) nil 
+                                (list stdout-buffer stderr-buffer) nil (cdr cmd-args))))
+          (message "[DEBUG] Whisper exit code: %s" exit-code))
+        
+        ;; Get stderr output
+        (let ((stderr (with-current-buffer stderr-buffer (buffer-string))))
+          (message "[DEBUG] Whisper stderr: %s" stderr))
+        
+        ;; Read the JSON file that whisper created
+        (message "[DEBUG] Checking for JSON file: %s" json-output-file)
+        (if (not (file-exists-p json-output-file))
+            (progn
+              (message "[DEBUG] JSON file not found at %s" json-output-file)
+              nil)
           
-          ;; Debug: Log stderr if present
-          (when (and stderr (not (string-empty-p stderr)))
-            (message "whisper stderr: %s" stderr))
-          
-          ;; Try to parse JSON output
-          (when (and output (not (string-empty-p output)))
+          ;; Read and parse the JSON file
+          (let ((json-content (with-temp-buffer
+                                (insert-file-contents json-output-file)
+                                (buffer-string))))
+            (message "[DEBUG] JSON file content length: %d" (length json-content))
+            (message "[DEBUG] JSON content: %s" json-content)
+            
+            ;; Try to parse JSON
             (let ((json-object-type 'plist)
                   (json-array-type 'list))
               (condition-case parse-err
-                  (let* ((json-data (json-read-from-string output))
+                  (let* ((json-data (json-read-from-string json-content))
                          (text (plist-get json-data :text)))
+                    (message "[DEBUG] Parsed JSON successfully, text: %s" text)
                     (when text (string-trim text)))
                 (error
                  ;; If JSON parsing fails, try extracting text field manually
-                 (message "JSON parse error: %s, output: %s" 
-                          (error-message-string parse-err) output)
-                 (let ((text-match (string-match "\"text\":\\s *\"\\([^\"]*\\)\"" output)))
+                 (message "[DEBUG] JSON parse error: %s" (error-message-string parse-err))
+                 (let ((text-match (string-match "\"text\":\\s *\"\\([^\"]*\\)\"" json-content)))
                    (when text-match
-                     (match-string 1 output))))))))))
+                     (match-string 1 json-content))))))))))
     (error
      (message "Transcription failed: %s" (error-message-string err))
-     nil))
+     nil)))
 
 
 ;; ============================================================================
@@ -164,6 +198,9 @@ and inserts the text at point."
   (setq emacs-openclaw--whisper-recording-buffer (current-buffer))
   (setq emacs-openclaw--whisper-recording-point (point-marker))
   
+  (message "[DEBUG] Starting whisper recording workflow")
+  (message "[DEBUG] Temp file: %s" emacs-openclaw--whisper-recording-file)
+  
   ;; Start recording
   (setq emacs-openclaw--whisper-recording-process 
         (emacs-openclaw--whisper-record-start emacs-openclaw--whisper-recording-file))
@@ -174,17 +211,23 @@ and inserts the text at point."
     ;; Wait for user to stop recording (C-g)
     (condition-case nil
         (progn
+          (message "[DEBUG] Waiting for user to press C-g...")
           (while t (sit-for 1)))
       (quit 
        ;; Stop recording
+       (message "[DEBUG] User pressed C-g, stopping recording...")
        (emacs-openclaw--whisper-stop-recording)
        
        ;; Check if file was created and has size
+       (message "[DEBUG] Checking if file exists: %s" emacs-openclaw--whisper-recording-file)
        (if (not (file-exists-p emacs-openclaw--whisper-recording-file))
            (message "❌ Recording failed: no audio file created")
          
-         (let ((file-size (file-attribute-size 
+         (let ((file-attrs (file-attributes emacs-openclaw--whisper-recording-file))
+               (file-size (file-attribute-size 
                           (file-attributes emacs-openclaw--whisper-recording-file))))
+           (message "[DEBUG] File exists. Attributes: %s" file-attrs)
+           (message "[DEBUG] File size: %d bytes" file-size)
            (if (< file-size 100)
                (message "❌ Recording failed: audio file too small (%d bytes)" file-size)
              
@@ -195,6 +238,7 @@ and inserts the text at point."
                     (was-valid (and emacs-openclaw--whisper-recording-buffer
                                    (buffer-live-p emacs-openclaw--whisper-recording-buffer))))
                
+               (message "[DEBUG] Transcript result: %s" transcript)
                (if transcript
                    (when was-valid
                      (with-current-buffer emacs-openclaw--whisper-recording-buffer
@@ -203,12 +247,14 @@ and inserts the text at point."
                  (message "❌ Transcription failed or returned empty"))
                
                ;; Clean up
+               (message "[DEBUG] Cleaning up temp file...")
                (when (file-exists-p emacs-openclaw--whisper-recording-file)
                  (delete-file emacs-openclaw--whisper-recording-file))
                (setq emacs-openclaw--whisper-recording-file nil
                      emacs-openclaw--whisper-recording-buffer nil
                      emacs-openclaw--whisper-recording-point nil
-                     emacs-openclaw--whisper-recording-process nil)))))))))
+                     emacs-openclaw--whisper-recording-process nil)
+               (message "[DEBUG] Cleanup complete")))))))))
 
 ;; ============================================================================
 ;; Mode Integration
