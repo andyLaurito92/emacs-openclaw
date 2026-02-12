@@ -25,6 +25,7 @@
 (require 'emacs-openclaw-server)
 (require 'emacs-openclaw-mode)
 (require 'emacs-openclaw-chat)
+(require 'emacs-openclaw-buffers)
 
 ;; Conditionally load whisper integration (only if user enables it)
 ;; Uses direct Whisper CLI integration (no whisper.el dependency)

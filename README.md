@@ -20,6 +20,7 @@ Talk to OpenClaw directly from Emacs. A minor mode + FastAPI backend for seamles
 - 💬 **Chat with OpenClaw** — Interactive chat buffer right in Emacs with streaming responses
 - 📧 **Gmail Integration** — List, search, and delete emails (backend included)
 - 📅 **Google Calendar** — Create and manage calendar events
+- 📋 **Buffer Management API** — OpenClaw can access and manipulate Emacs buffers in real-time via emacsclient
 - 🎤 **Speech-to-Text** — Optional audio transcription via OpenAI Whisper CLI (disabled by default)
 - 🔌 **WebSocket-based** — Real-time streaming chat via OpenClaw Gateway WebSocket protocol
 - 🚀 **Auto-start Server** — Server starts automatically when needed (optional)
@@ -104,6 +105,48 @@ M-x emacs-openclaw--stop-server          ;; Stop server
 M-x emacs-openclaw-show-server-buffer    ;; View server logs
 M-x emacs-openclaw-disconnect            ;; Disconnect WebSocket (auto-reconnects on next message)
 ```
+
+## Buffer Management API
+
+OpenClaw can access and manipulate Emacs buffers in real-time through the `/emacs` endpoints. This allows OpenClaw to:
+- List all visible buffers
+- Create new buffers
+- Read buffer contents
+- Modify buffer contents
+- Delete buffers
+
+**Available Endpoints:**
+```
+GET    /emacs/buffers                      # List all visible buffer names
+POST   /emacs/buffer                       # Create a new buffer
+GET    /emacs/buffer/{name}/content        # Get buffer content
+PUT    /emacs/buffer/{name}/content        # Set buffer content
+DELETE /emacs/buffer/{name}                # Delete a buffer
+```
+
+**Requirements:**
+- Emacs must be running in server mode (run `M-x server-start` or add `(server-start)` to your init.el)
+- `emacsclient` must be available in your PATH
+
+**Example Usage (via HTTP):**
+```bash
+# List all buffers
+curl http://localhost:3333/emacs/buffers
+
+# Get content of a buffer
+curl http://localhost:3333/emacs/buffer/init.el/content
+
+# Create a new buffer
+curl -X POST http://localhost:3333/emacs/buffer -H "Content-Type: application/json" -d '{"name": "my-notes"}'
+
+# Set buffer content
+curl -X PUT http://localhost:3333/emacs/buffer/my-notes/content -H "Content-Type: application/json" -d '{"content": "Hello from OpenClaw!"}'
+
+# Delete a buffer
+curl -X DELETE http://localhost:3333/emacs/buffer/my-notes
+```
+
+These endpoints are automatically discovered by OpenClaw through the `/tools` endpoint and can be used by the AI agent to help with buffer-specific tasks.
 
 ## WebSocket Communication
 
