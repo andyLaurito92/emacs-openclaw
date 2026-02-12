@@ -242,6 +242,35 @@ For setup instructions, see [SPEECH_TO_TEXT.md](SPEECH_TO_TEXT.md).
 
 **Note:** Speech-to-text is disabled by default and has zero overhead when not used.
 
+### Text-to-Speech (Optional)
+
+Enable audio playback of OpenClaw responses using your system's default text-to-speech engine:
+
+```elisp
+;; Enable text-to-speech (uses `say` on macOS, `espeak` on Linux)
+(setq emacs-openclaw-tts-enabled t)
+
+;; Or toggle TTS on/off interactively
+;; M-x emacs-openclaw-tts-toggle
+
+;; Customize TTS voice (macOS)
+(setq emacs-openclaw-tts-voice "Samantha")  ; Default voice
+;; Run `say -v ?` in terminal to see available voices
+
+;; Customize speech rate (words per minute)
+(setq emacs-openclaw-tts-rate 150)  ; Default: 150
+
+;; For Linux, set the TTS command to espeak
+(setq emacs-openclaw-tts-command "espeak")
+(setq emacs-openclaw-tts-voice "english")  ; espeak voice name
+```
+
+**Available commands:**
+- `M-x emacs-openclaw-tts-toggle` — Toggle TTS on/off
+- `M-x emacs-openclaw-tts-list-voices` — List available voices (macOS only)
+
+**Note:** Text-to-speech is disabled by default. No additional dependencies are required on macOS (uses built-in `say` command). On Linux, install `espeak` via your package manager.
+
 ### Server Port
 
 The Gmail/Calendar tools server runs on port 3333 by default. You can customize this in Emacs:
