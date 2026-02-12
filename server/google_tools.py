@@ -78,7 +78,7 @@ def google_search_emails(query: str) -> list:
 
 def google_get_email(message_id: str) -> dict:
     """
-    Get full email details by message ID.
+    Get full email details by message ID, including body and unsubscribe link.
     """
     creds = _load_creds()
     service = build(*GMAIL_API, credentials=creds)
@@ -98,12 +98,30 @@ def google_get_email(message_id: str) -> dict:
     subject = next((h["value"] for h in headers if h["name"] == "Subject"), "")
     from_addr = next((h["value"] for h in headers if h["name"] == "From"), "")
     date = next((h["value"] for h in headers if h["name"] == "Date"), "")
+    list_unsubscribe = next((h["value"] for h in headers if h["name"] == "List-Unsubscribe"), "")
+
+    # Extract body
+    body = ""
+    payload = msg.get("payload", {})
+    
+    if "parts" in payload:
+        # Multipart message
+        for part in payload["parts"]:
+            if part["mimeType"] == "text/plain" or part["mimeType"] == "text/html":
+                if "data" in part["body"]:
+                    body = base64.urlsafe_b64decode(part["body"]["data"]).decode("utf-8", errors="ignore")
+                    break
+    elif "body" in payload and "data" in payload["body"]:
+        # Simple message
+        body = base64.urlsafe_b64decode(payload["body"]["data"]).decode("utf-8", errors="ignore")
 
     return {
         "id": message_id,
         "subject": subject,
         "from": from_addr,
         "date": date,
+        "body": body,
+        "list_unsubscribe": list_unsubscribe,
     }
 
 
