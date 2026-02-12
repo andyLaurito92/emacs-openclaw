@@ -27,7 +27,8 @@
   (should (featurep 'emacs-openclaw-websocket))
   (should (featurep 'emacs-openclaw-server))
   (should (featurep 'emacs-openclaw-mode))
-  (should (featurep 'emacs-openclaw-chat)))
+  (should (featurep 'emacs-openclaw-chat))
+  (should (featurep 'emacs-openclaw-tts)))
 
 (ert-deftest test-functions-exist ()
   "Test that all public functions are defined."
@@ -72,3 +73,45 @@
          (error err)))  ;; Return the error if one occurs
       ;; Verify buffer is still not alive
       (should-not (buffer-live-p (get-buffer buf-name))))))
+
+(ert-deftest test-tts-module-loading ()
+  "Test that TTS module loads correctly."
+  (should (featurep 'emacs-openclaw-tts))
+  (should (fboundp 'emacs-openclaw-tts-speak))
+  (should (fboundp 'emacs-openclaw-tts-toggle))
+  (should (fboundp 'emacs-openclaw-tts-speak-response))
+  (should (fboundp 'emacs-openclaw-tts-list-voices)))
+
+(ert-deftest test-tts-toggle ()
+  "Test that TTS toggle works correctly."
+  (let ((original-state emacs-openclaw-tts-enabled))
+    ;; Test toggling from disabled to enabled
+    (setq emacs-openclaw-tts-enabled nil)
+    (emacs-openclaw-tts-toggle)
+    (should emacs-openclaw-tts-enabled)
+    
+    ;; Test toggling from enabled to disabled
+    (emacs-openclaw-tts-toggle)
+    (should-not emacs-openclaw-tts-enabled)
+    
+    ;; Restore original state
+    (setq emacs-openclaw-tts-enabled original-state)))
+
+(ert-deftest test-tts-speak-empty-text ()
+  "Test that TTS speak handles empty text gracefully."
+  ;; Should not raise an error with empty text
+  (should-not
+   (condition-case err
+       (progn
+         (emacs-openclaw-tts-speak "")
+         nil)
+     (error err)))
+  
+  ;; Should not raise an error with nil
+  (should-not
+   (condition-case err
+       (progn
+         (emacs-openclaw-tts-speak nil)
+         nil)
+     (error err))))
+

@@ -45,18 +45,15 @@ Defaults to 'say' (macOS). Set to 'espeak' for Linux."
 Uses `say` on macOS or `espeak` on Linux."
   (when (and text (not (string-empty-p text)))
     (let* ((cmd emacs-openclaw-tts-command)
-           (voice-arg (if (string= cmd "say") "-v" "-v"))
-           (rate-arg (if (string= cmd "say") "-r" "--rate")))
-      (shell-command
-       (format "%s %s %s %s %d <<< %s"
-               cmd
-               voice-arg
-               emacs-openclaw-tts-voice
-               rate-arg
-               emacs-openclaw-tts-rate
-               (shell-quote-argument text))
-       nil
-       nil))))
+           (say-p (string= cmd "say"))
+           (args (if say-p
+                     (list "-v" emacs-openclaw-tts-voice
+                           "-r" (number-to-string emacs-openclaw-tts-rate)
+                           text)
+                   (list "-v" emacs-openclaw-tts-voice
+                         "-s" (number-to-string emacs-openclaw-tts-rate)
+                         text))))
+      (apply #'call-process cmd nil 0 nil args))))
 
 (defun emacs-openclaw-tts-speak-response (response)
   "Speak RESPONSE if TTS is enabled.
