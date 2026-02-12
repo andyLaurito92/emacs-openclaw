@@ -41,6 +41,26 @@ def _emacsclient_eval(elisp_expr: str) -> str:
         raise RuntimeError("emacsclient not found. Is Emacs running in server mode?")
 
 
+def _escape_elisp_string(s: str, escape_newlines: bool = False) -> str:
+    """
+    Escape a string for use in Emacs Lisp.
+    
+    Args:
+        s: The string to escape
+        escape_newlines: If True, also escape newline characters
+        
+    Returns:
+        The escaped string
+    """
+    # Order matters: escape backslashes first, then quotes
+    result = s.replace('\\', '\\\\').replace('"', '\\"')
+    if escape_newlines:
+        # Replace actual newlines with escaped newlines
+        result = result.replace('\n', '\\n')
+        result = result.replace('\t', '\\t')
+    return result
+
+
 def _parse_elisp_string(elisp_output: str) -> str:
     """
     Parse a string from Emacs Lisp output.
@@ -143,7 +163,7 @@ def emacs_create_buffer(buffer_name: str) -> str:
     """
     try:
         # Escape the buffer name for Elisp
-        escaped_name = buffer_name.replace('\\', '\\\\').replace('"', '\\"')
+        escaped_name = _escape_elisp_string(buffer_name)
         output = _emacsclient_eval(f'(openclaw-create-buffer "{escaped_name}")')
         return _parse_elisp_string(output)
     except Exception as e:
@@ -166,7 +186,7 @@ def emacs_get_buffer_content(buffer_name: str) -> str:
     """
     try:
         # Escape the buffer name for Elisp
-        escaped_name = buffer_name.replace('\\', '\\\\').replace('"', '\\"')
+        escaped_name = _escape_elisp_string(buffer_name)
         output = _emacsclient_eval(f'(openclaw-get-buffer-content "{escaped_name}")')
         return _parse_elisp_string(output)
     except Exception as e:
@@ -190,8 +210,8 @@ def emacs_set_buffer_content(buffer_name: str, content: str) -> bool:
     """
     try:
         # Escape both the buffer name and content for Elisp
-        escaped_name = buffer_name.replace('\\', '\\\\').replace('"', '\\"')
-        escaped_content = content.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
+        escaped_name = _escape_elisp_string(buffer_name)
+        escaped_content = _escape_elisp_string(content, escape_newlines=True)
         output = _emacsclient_eval(f'(openclaw-set-buffer-content "{escaped_name}" "{escaped_content}")')
         return output == "t"
     except Exception as e:
@@ -214,7 +234,7 @@ def emacs_delete_buffer(buffer_name: str) -> bool:
     """
     try:
         # Escape the buffer name for Elisp
-        escaped_name = buffer_name.replace('\\', '\\\\').replace('"', '\\"')
+        escaped_name = _escape_elisp_string(buffer_name)
         output = _emacsclient_eval(f'(openclaw-delete-buffer "{escaped_name}")')
         return output == "t"
     except Exception as e:
