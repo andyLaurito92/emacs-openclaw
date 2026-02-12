@@ -8,6 +8,7 @@ import os
 
 from google_server import router as google_router
 from microsoft_server import router as microsoft_router
+from emacs_server import router as emacs_router
 
 # Setup logging to file and console
 log_file = "logs.txt"
@@ -42,6 +43,7 @@ app = FastAPI(
 
 app.include_router(google_router)
 app.include_router(microsoft_router)
+app.include_router(emacs_router)
 
 
 # =========================
@@ -59,7 +61,7 @@ def health_check():
 def list_tools():
     """List available tools and their descriptions."""
     return {
-        "providers": ["google", "microsoft"],
+        "providers": ["google", "microsoft", "emacs"],
         "tools": [
             {
                 "provider": "google",
@@ -270,6 +272,56 @@ def list_tools():
                 "method": "DELETE",
                 "description": "Delete a calendar event by ID",
                 "parameters": {"event_id": "string (calendar event ID)"},
+            },
+            # EMACS BUFFER TOOLS
+            {
+                "provider": "emacs",
+                "name": "list_buffers",
+                "endpoint": "/emacs/buffers",
+                "method": "GET",
+                "description": "List all visible buffer names in Emacs",
+                "parameters": {},
+            },
+            {
+                "provider": "emacs",
+                "name": "create_buffer",
+                "endpoint": "/emacs/buffer",
+                "method": "POST",
+                "description": "Create a new buffer in Emacs",
+                "parameters": {
+                    "name": "string (buffer name)",
+                },
+            },
+            {
+                "provider": "emacs",
+                "name": "get_buffer_content",
+                "endpoint": "/emacs/buffer/{buffer_name}/content",
+                "method": "GET",
+                "description": "Get the content of an Emacs buffer",
+                "parameters": {
+                    "buffer_name": "string (buffer name)",
+                },
+            },
+            {
+                "provider": "emacs",
+                "name": "set_buffer_content",
+                "endpoint": "/emacs/buffer/{buffer_name}/content",
+                "method": "PUT",
+                "description": "Set the content of an Emacs buffer",
+                "parameters": {
+                    "buffer_name": "string (buffer name)",
+                    "content": "string (new buffer content)",
+                },
+            },
+            {
+                "provider": "emacs",
+                "name": "delete_buffer",
+                "endpoint": "/emacs/buffer/{buffer_name}",
+                "method": "DELETE",
+                "description": "Delete an Emacs buffer",
+                "parameters": {
+                    "buffer_name": "string (buffer name)",
+                },
             },
         ],
     }
