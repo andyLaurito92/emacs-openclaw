@@ -32,7 +32,6 @@ class CreateBufferRequest(BaseModel):
 
 
 class SetBufferContentRequest(BaseModel):
-    name: str
     content: str
 
 
@@ -105,20 +104,20 @@ def get_buffer_content_endpoint(buffer_name: str):
 
 
 @router.put("/buffer/{buffer_name}/content")
-def set_buffer_content_endpoint(buffer_name: str, content: str):
+def set_buffer_content_endpoint(buffer_name: str, payload: SetBufferContentRequest):
     """
     Set the content of a buffer, replacing all existing content.
     
     Args:
         buffer_name: Name of the buffer to modify
-        content: New content for the buffer
+        payload: Request containing the new content for the buffer
         
     Returns:
         Success status
     """
     try:
         logger.info(f"Setting content of buffer: {buffer_name}")
-        success = emacs_set_buffer_content(buffer_name, content)
+        success = emacs_set_buffer_content(buffer_name, payload.content)
         if success:
             logger.info(f"Buffer content updated successfully")
             return {"status": "success", "buffer_name": buffer_name}

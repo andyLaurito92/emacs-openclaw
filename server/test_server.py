@@ -337,13 +337,13 @@ class TestEmacsBufferRouting:
         with patch("emacs_server.emacs_set_buffer_content") as mock_set:
             mock_set.return_value = True
             response = client.put(
-                "/emacs/buffer/test.txt/content?content=New+content"
+                "/emacs/buffer/test.txt/content", json={"content": "New content"}
             )
             assert response.status_code == 200
             data = response.json()
             assert data["status"] == "success"
             assert data["buffer_name"] == "test.txt"
-            mock_set.assert_called_once()
+            mock_set.assert_called_once_with("test.txt", "New content")
 
     def test_delete_buffer_endpoint_exists(self, client):
         """Test /emacs/buffer/{buffer_name} DELETE endpoint is accessible."""
