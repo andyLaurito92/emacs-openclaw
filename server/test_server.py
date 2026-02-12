@@ -34,6 +34,7 @@ class TestServerStructure:
         assert "providers" in data
         assert "google" in data["providers"]
         assert "microsoft" in data["providers"]
+        assert "emacs" in data["providers"]
 
     def test_tools_list_has_google_endpoints(self, client):
         """Test that /tools lists all Google endpoints with /google prefix."""
@@ -279,3 +280,110 @@ class TestRouterIsolation:
             # Should fail without prefix
             response = client.get("/emails")
             assert response.status_code == 404
+
+
+class TestEmacsBufferRouting:
+    """Test that Emacs buffer endpoints are correctly routed."""
+
+    def test_tools_list_has_emacs_endpoints(self, client):
+        """Test that /tools lists all Emacs endpoints with /emacs prefix."""
+        response = client.get("/tools")
+        data = response.json()
+        tools = data["tools"]
+
+        # Check that all Emacs tools have correct prefix
+        emacs_tools = [t for t in tools if t["provider"] == "emacs"]
+        assert len(emacs_tools) == 5  # list, create, get, set, delete
+
+        for tool in emacs_tools:
+            assert tool["endpoint"].startswith("/emacs/")
+            assert tool["provider"] == "emacs"
+
+    def test_list_buffers_endpoint_exists(self, client):
+        """Test /emacs/buffers endpoint is accessible."""
+        with patch("emacs_server.emacs_list_buffers") as mock_list:
+            mock_list.return_value = ["*scratch*", "test.txt"]
+            response = client.get("/emacs/buffers")
+            assert response.status_code == 200
+            data = response.json()
+            assert "buffers" in data
+            assert data["buffers"] == ["*scratch*", "test.txt"]
+            mock_list.assert_called_once()
+
+    def test_create_buffer_endpoint_exists(self, client):
+        """Test /emacs/buffer POST endpoint is accessible."""
+        with patch("emacs_server.emacs_create_buffer") as mock_create:
+            mock_create.return_value = "test-buffer"
+            response = client.post("/emacs/buffer", json={"name": "test-buffer"})
+            assert response.status_code == 200
+            data = response.json()
+            assert data["status"] == "created"
+            assert data["buffer_name"] == "test-buffer"
+            mock_create.assert_called_once_with("test-buffer")
+
+    def test_get_buffer_content_endpoint_exists(self, client):
+        """Test /emacs/buffer/{buffer_name}/content GET endpoint is accessible."""
+        with patch("emacs_server.emacs_get_buffer_content") as mock_get:
+            mock_get.return_value = "Buffer content here"
+            response = client.get("/emacs/buffer/test.txt/content")
+            assert response.status_code == 200
+            data = response.json()
+            assert data["buffer_name"] == "test.txt"
+            assert data["content"] == "Buffer content here"
+            mock_get.assert_called_once_with("test.txt")
+
+    def test_set_buffer_content_endpoint_exists(self, client):
+        """Test /emacs/buffer/{buffer_name}/content PUT endpoint is accessible."""
+        with patch("emacs_server.emacs_set_buffer_content") as mock_set:
+            mock_set.return_value = True
+            response = client.put(
+                "/emacs/buffer/test.txt/content?content=New+content"
+            )
+            assert response.status_code == 200
+            data = response.json()
+            assert data["status"] == "success"
+            assert data["buffer_name"] == "test.txt"
+            mock_set.assert_called_once()
+
+    def test_delete_buffer_endpoint_exists(self, client):
+        """Test /emacs/buffer/{buffer_name} DELETE endpoint is accessible."""
+        with patch("emacs_server.emacs_delete_buffer") as mock_delete:
+            mock_delete.return_value = True
+            response = client.delete("/emacs/buffer/test.txt")
+            assert response.status_code == 200
+            data = response.json()
+            assert data["status"] == "deleted"
+            assert data["buffer_name"] == "test.txt"
+            mock_delete.assert_called_once_with("test.txt")
+
+    def test_emacs_error_handling(self, client):
+        """Test that Emacs errors are properly handled and return 500."""
+        with patch("emacs_server.emacs_list_buffers") as mock_list:
+            mock_list.side_effect = RuntimeError("emacsclient not found")
+            response = client.get("/emacs/buffers")
+            assert response.status_code == 500
+            assert "detail" in response.json()
+
+
+class TestEmacsToolsPrefix:
+    """Test that emacs_tools module has properly prefixed functions."""
+
+    def test_emacs_tools_exports_prefixed_functions(self):
+        """Test that emacs_tools exports emacs_* prefixed functions."""
+        import emacs_tools
+
+        # Check for key functions with emacs_ prefix
+        expected_functions = [
+            "emacs_list_buffers",
+            "emacs_create_buffer",
+            "emacs_get_buffer_content",
+            "emacs_set_buffer_content",
+            "emacs_delete_buffer",
+        ]
+
+        for func_name in expected_functions:
+            assert hasattr(
+                emacs_tools, func_name
+            ), f"Missing {func_name} in emacs_tools"
+            assert callable(getattr(emacs_tools, func_name))
+

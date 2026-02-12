@@ -29,6 +29,10 @@
         (error "emacs-openclaw-chat not loaded"))
       (message "✓ emacs-openclaw-chat loaded")
       
+      (unless (featurep 'emacs-openclaw-buffers)
+        (error "emacs-openclaw-buffers not loaded"))
+      (message "✓ emacs-openclaw-buffers loaded")
+      
       ;; Check that all public functions exist
       (unless (fboundp 'emacs-openclaw-chat)
         (error "emacs-openclaw-chat function not defined"))
@@ -41,6 +45,27 @@
       (unless (fboundp 'emacs-openclaw-send-line)
         (error "emacs-openclaw-send-line function not defined"))
       (message "✓ emacs-openclaw-send-line function exists")
+      
+      ;; Check buffer functions
+      (unless (fboundp 'openclaw-list-buffer-names)
+        (error "openclaw-list-buffer-names function not defined"))
+      (message "✓ openclaw-list-buffer-names function exists")
+      
+      (unless (fboundp 'openclaw-create-buffer)
+        (error "openclaw-create-buffer function not defined"))
+      (message "✓ openclaw-create-buffer function exists")
+      
+      (unless (fboundp 'openclaw-get-buffer-content)
+        (error "openclaw-get-buffer-content function not defined"))
+      (message "✓ openclaw-get-buffer-content function exists")
+      
+      (unless (fboundp 'openclaw-set-buffer-content)
+        (error "openclaw-set-buffer-content function not defined"))
+      (message "✓ openclaw-set-buffer-content function exists")
+      
+      (unless (fboundp 'openclaw-delete-buffer)
+        (error "openclaw-delete-buffer function not defined"))
+      (message "✓ openclaw-delete-buffer function exists")
       
       (message "\n✅ All checks passed!")
       (kill-emacs 0))
