@@ -4,6 +4,7 @@
 (require 'websocket)
 (require 'cl-lib)
 (require 'emacs-openclaw-config)
+(require 'emacs-openclaw-tts)
 
 (defvar emacs-openclaw--websocket nil)
 (defvar emacs-openclaw--websocket-connected nil)
@@ -51,8 +52,12 @@
                (string= (alist-get 'phase data) "end"))
           (emacs-openclaw--log "\n" nil)
           (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow)
-          (emacs-openclaw--log "\n" nil)))))))
-
+          (emacs-openclaw--log "\n" nil)
+          ;; Speak the complete response if TTS is enabled
+          (when (> (length emacs-openclaw--current-message-buffer) 0)
+            (emacs-openclaw-tts-speak-response emacs-openclaw--current-message-buffer))
+          ;; Clear buffer for next response
+          (setq emacs-openclaw--current-message-buffer "")))))))
 ;; ----------------------------------------------------------------------------
 ;; Message handling
 ;; ----------------------------------------------------------------------------
