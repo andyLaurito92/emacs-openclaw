@@ -482,3 +482,230 @@ def google_share_drive_file(
     )
 
     return result
+
+
+# =========================
+# Gmail Labels
+# =========================
+
+
+def google_create_label(
+    name: str,
+    label_list_visibility: str = "labelShow",
+    message_list_visibility: str = "show",
+) -> dict:
+    """
+    Create a Gmail label.
+    
+    label_list_visibility: "labelShow" or "labelHide"
+    message_list_visibility: "show" or "hide"
+    """
+    creds = _load_creds()
+    service = build(*GMAIL_API, credentials=creds)
+
+    label_obj = {
+        "name": name,
+        "labelListVisibility": label_list_visibility,
+        "messageListVisibility": message_list_visibility,
+    }
+
+    result = (
+        service.users()
+        .labels()
+        .create(
+            userId="me",
+            body=label_obj,
+        )
+        .execute()
+    )
+
+    return {
+        "id": result.get("id"),
+        "name": result.get("name"),
+    }
+
+
+def google_list_labels() -> list:
+    """
+    List all Gmail labels.
+    """
+    creds = _load_creds()
+    service = build(*GMAIL_API, credentials=creds)
+
+    results = (
+        service.users()
+        .labels()
+        .list(userId="me")
+        .execute()
+    )
+
+    return results.get("labels", [])
+
+
+def google_get_label(label_id: str) -> dict:
+    """
+    Get a specific label by ID.
+    """
+    creds = _load_creds()
+    service = build(*GMAIL_API, credentials=creds)
+
+    label = (
+        service.users()
+        .labels()
+        .get(userId="me", id=label_id)
+        .execute()
+    )
+
+    return label
+
+
+def google_delete_label(label_id: str) -> None:
+    """
+    Delete a Gmail label by ID.
+    """
+    creds = _load_creds()
+    service = build(*GMAIL_API, credentials=creds)
+
+    service.users().labels().delete(userId="me", id=label_id).execute()
+
+
+def google_apply_label(message_id: str, label_id: str) -> None:
+    """
+    Apply a label to an email message.
+    """
+    creds = _load_creds()
+    service = build(*GMAIL_API, credentials=creds)
+
+    service.users().messages().modify(
+        userId="me",
+        id=message_id,
+        body={"addLabelIds": [label_id]},
+    ).execute()
+
+
+def google_remove_label(message_id: str, label_id: str) -> None:
+    """
+    Remove a label from an email message.
+    """
+    creds = _load_creds()
+    service = build(*GMAIL_API, credentials=creds)
+
+    service.users().messages().modify(
+        userId="me",
+        id=message_id,
+        body={"removeLabelIds": [label_id]},
+    ).execute()
+
+
+def google_apply_label_batch(message_ids: List[str], label_id: str) -> None:
+    """
+    Apply a label to multiple email messages.
+    """
+    creds = _load_creds()
+    service = build(*GMAIL_API, credentials=creds)
+
+    for msg_id in message_ids:
+        service.users().messages().modify(
+            userId="me",
+            id=msg_id,
+            body={"addLabelIds": [label_id]},
+        ).execute()
+
+
+# =========================
+# Gmail Filters
+# =========================
+
+
+def google_create_filter(
+    criteria: dict,
+    action: dict,
+) -> dict:
+    """
+    Create a Gmail filter.
+    
+    criteria example: {
+        "from": "sender@example.com",
+        "to": "recipient@example.com",
+        "subject": "keywords",
+        "hasAttachment": True,
+        "excludeChats": False,
+    }
+    
+    action example: {
+        "addLabelIds": ["label_id"],
+        "removeLabelIds": [],
+        "archive": False,
+        "markAsRead": False,
+        "neverSpam": False,
+        "skipInbox": False,
+        "delete": False,
+    }
+    """
+    creds = _load_creds()
+    service = build(*GMAIL_API, credentials=creds)
+
+    filter_obj = {
+        "criteria": criteria,
+        "action": action,
+    }
+
+    result = (
+        service.users()
+        .settings()
+        .filters()
+        .create(userId="me", body=filter_obj)
+        .execute()
+    )
+
+    return {
+        "id": result.get("id"),
+        "criteria": result.get("criteria"),
+        "action": result.get("action"),
+    }
+
+
+def google_list_filters() -> list:
+    """
+    List all Gmail filters.
+    """
+    creds = _load_creds()
+    service = build(*GMAIL_API, credentials=creds)
+
+    results = (
+        service.users()
+        .settings()
+        .filters()
+        .list(userId="me")
+        .execute()
+    )
+
+    return results.get("filter", [])
+
+
+def google_get_filter(filter_id: str) -> dict:
+    """
+    Get a specific filter by ID.
+    """
+    creds = _load_creds()
+    service = build(*GMAIL_API, credentials=creds)
+
+    filter_obj = (
+        service.users()
+        .settings()
+        .filters()
+        .get(userId="me", id=filter_id)
+        .execute()
+    )
+
+    return filter_obj
+
+
+def google_delete_filter(filter_id: str) -> None:
+    """
+    Delete a Gmail filter by ID.
+    """
+    creds = _load_creds()
+    service = build(*GMAIL_API, credentials=creds)
+
+    service.users().settings().filters().delete(userId="me", id=filter_id).execute()
