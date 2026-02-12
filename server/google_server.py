@@ -9,6 +9,7 @@ from google_tools import (
     google_delete_calendar_event,
     google_search_emails,
     google_delete_email,
+    google_get_email,
     google_list_emails,
     google_list_drive_files,
     google_search_drive_files,
@@ -98,6 +99,18 @@ def list_emails_endpoint(limit: int = 10):
         return {"emails": emails}
     except Exception as e:
         logger.error(f"Error listing emails: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/email/{message_id}")
+def get_email_endpoint(message_id: str):
+    try:
+        logger.info(f"Fetching email content: {message_id}")
+        email = google_get_email(message_id)
+        logger.info(f"Retrieved email: {email.get('subject')}")
+        return {"email": email}
+    except Exception as e:
+        logger.error(f"Error fetching email {message_id}: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
