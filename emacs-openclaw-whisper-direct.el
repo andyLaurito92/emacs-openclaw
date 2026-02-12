@@ -46,11 +46,10 @@
   (let* ((sox-bin (executable-find "sox"))
          (recorder-cmd 
           (if sox-bin
-              ;; Record with input gain and normalization after recording
-              (format "sox -d -r 16000 -c 1 -b 16 -R %s"
+              (format "sox -d -r 16000 -c 1 -b 16 %s --no-show-progress"
                       (shell-quote-argument wav-file))
             (error "Sox not found. Run 'brew install sox'"))))
-    (message "[WHISPER] Recording started. Speak now... (using MacBook Microphone)")
+    (message "[WHISPER] Recording started (using System Default Input)...")
     ;; Output redirected to a debug buffer so we can monitor for silence/errors
     (let ((proc (start-process-shell-command "emacs-openclaw-record" "*openclaw-sox*" recorder-cmd)))
       (set-process-query-on-exit-flag proc nil)
