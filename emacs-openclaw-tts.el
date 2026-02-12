@@ -45,8 +45,8 @@ Defaults to 'say' (macOS). Set to 'espeak' for Linux."
 Uses `say` on macOS or `espeak` on Linux."
   (when (and text (not (string-empty-p text)))
     (let* ((cmd emacs-openclaw-tts-command)
-           (is-say (string= cmd "say"))
-           (args (if is-say
+           (say-p (string= cmd "say"))
+           (args (if say-p
                      (list "-v" emacs-openclaw-tts-voice
                            "-r" (number-to-string emacs-openclaw-tts-rate)
                            text)
