@@ -240,3 +240,175 @@ def emacs_delete_buffer(buffer_name: str) -> bool:
     except Exception as e:
         logger.error(f"Error deleting buffer '{buffer_name}': {e}")
         raise
+
+
+def emacs_append_buffer_content(buffer_name: str, content: str) -> bool:
+    """
+    Append content to a buffer without replacing existing content.
+    
+    Args:
+        buffer_name: Name of the buffer to append to
+        content: Content to append
+        
+    Returns:
+        True if successful
+        
+    Raises:
+        RuntimeError: If emacsclient fails or buffer doesn't exist
+    """
+    try:
+        # Get current content and append in Python
+        current = emacs_get_buffer_content(buffer_name)
+        new_content = current + content
+        return emacs_set_buffer_content(buffer_name, new_content)
+    except Exception as e:
+        logger.error(f"Error appending to buffer '{buffer_name}': {e}")
+        raise
+
+
+def emacs_get_buffer_info(buffer_name: str) -> dict:
+    """
+    Get information about a buffer.
+    
+    Args:
+        buffer_name: Name of the buffer
+        
+    Returns:
+        Dictionary with buffer info (line_count, char_count, modified, read_only, mode)
+        
+    Raises:
+        RuntimeError: If emacsclient fails or buffer doesn't exist
+    """
+    try:
+        # Get content and compute info
+        content = emacs_get_buffer_content(buffer_name)
+        line_count = content.count('\n') + (1 if content and not content.endswith('\n') else 0)
+        char_count = len(content)
+        
+        # Get more detailed info via Elisp
+        escaped_name = _escape_elisp_string(buffer_name)
+        output = _emacsclient_eval(f'(list (buffer-modified-p (get-buffer "{escaped_name}")) buffer-read-only (symbol-name major-mode))')
+        
+        # Simple parsing
+        info = {
+            "line_count": line_count,
+            "char_count": char_count,
+            "modified": "modified" in output or "t" in output.lower(),
+            "read_only": "nil" not in output,
+            "mode": "text"
+        }
+        return info
+    except Exception as e:
+        logger.error(f"Error getting buffer info for '{buffer_name}': {e}")
+        raise
+
+
+def emacs_get_buffer_region(buffer_name: str, start: int, end: int) -> str:
+    """
+    Get a region of text from a buffer.
+    
+    Args:
+        buffer_name: Name of the buffer
+        start: Start position (0-indexed)
+        end: End position (0-indexed, exclusive)
+        
+    Returns:
+        The text in that region
+        
+    Raises:
+        RuntimeError: If emacsclient fails or buffer doesn't exist
+    """
+    try:
+        content = emacs_get_buffer_content(buffer_name)
+        safe_start = max(0, start)
+        safe_end = min(len(content), end)
+        return content[safe_start:safe_end]
+    except Exception as e:
+        logger.error(f"Error getting buffer region '{buffer_name}' [{start}:{end}]: {e}")
+        raise
+
+
+def emacs_set_buffer_region(buffer_name: str, start: int, end: int, content: str) -> bool:
+    """
+    Replace a region of text in a buffer.
+    
+    Args:
+        buffer_name: Name of the buffer
+        start: Start position (0-indexed)
+        end: End position (0-indexed, exclusive)
+        content: New content for the region
+        
+    Returns:
+        True if successful
+        
+    Raises:
+        RuntimeError: If emacsclient fails or buffer doesn't exist
+    """
+    try:
+        current = emacs_get_buffer_content(buffer_name)
+        safe_start = max(0, start)
+        safe_end = min(len(current), end)
+        new_content = current[:safe_start] + content + current[safe_end:]
+        return emacs_set_buffer_content(buffer_name, new_content)
+    except Exception as e:
+        logger.error(f"Error setting buffer region '{buffer_name}' [{start}:{end}]: {e}")
+        raise
+
+
+def emacs_buffer_replace(buffer_name: str, find: str, replace: str, all_occurrences: bool = False) -> dict:
+    """
+    Search and replace in a buffer.
+    
+    Args:
+        buffer_name: Name of the buffer
+        find: Text to find
+        replace: Text to replace with
+        all_occurrences: If True, replace all occurrences; if False, replace only first
+        
+    Returns:
+        Dictionary with replacement count and result
+        
+    Raises:
+        RuntimeError: If emacsclient fails or buffer doesn't exist
+    """
+    try:
+        content = emacs_get_buffer_content(buffer_name)
+        
+        if all_occurrences:
+            new_content = content.replace(find, replace)
+            count = content.count(find)
+        else:
+            new_content = content.replace(find, replace, 1)
+            count = 1 if find in content else 0
+        
+        if content != new_content:
+            emacs_set_buffer_content(buffer_name, new_content)
+        
+        return {
+            "success": True,
+            "count": count
+        }
+    except Exception as e:
+        logger.error(f"Error replacing in buffer '{buffer_name}': {e}")
+        raise
+
+
+def emacs_eval_elisp(code: str) -> str:
+    """
+    Evaluate arbitrary Emacs Lisp code.
+    
+    Args:
+        code: Emacs Lisp code to evaluate
+        
+    Returns:
+        The result as a string
+        
+    Raises:
+        RuntimeError: If emacsclient fails
+    """
+    try:
+        output = _emacsclient_eval(code)
+        return output
+    except Exception as e:
+        logger.error(f"Error evaluating Elisp code: {e}")
+        raise
