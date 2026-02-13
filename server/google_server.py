@@ -9,6 +9,7 @@ from google_tools import (
     google_delete_calendar_event,
     google_search_emails,
     google_delete_email,
+    google_batch_delete_emails,
     google_get_email,
     google_list_emails,
     google_list_drive_files,
@@ -134,6 +135,23 @@ def delete_email_endpoint(message_id: str):
         return {"status": "deleted"}
     except Exception as e:
         logger.error(f"Error deleting email {message_id}: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class BatchDeleteEmailsRequest(BaseModel):
+    message_ids: List[str]
+
+
+@router.post("/emails/batch-delete")
+def batch_delete_emails_endpoint(payload: BatchDeleteEmailsRequest):
+    """Batch delete multiple emails. Much faster than deleting one-by-one."""
+    try:
+        logger.info(f"Batch deleting {len(payload.message_ids)} emails")
+        google_batch_delete_emails(payload.message_ids)
+        logger.info(f"Successfully batch deleted {len(payload.message_ids)} emails")
+        return {"status": "deleted", "count": len(payload.message_ids)}
+    except Exception as e:
+        logger.error(f"Error batch deleting emails: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

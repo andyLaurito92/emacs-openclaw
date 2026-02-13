@@ -159,6 +159,22 @@ def google_delete_email(message_id: str) -> None:
     ).execute()
 
 
+def google_batch_delete_emails(message_ids: List[str]) -> None:
+    """
+    Batch delete multiple emails by message IDs.
+    Much faster than deleting one-by-one.
+    
+    Note: Provides no guarantees that messages were not already deleted.
+    """
+    creds = _load_creds()
+    service = build(*GMAIL_API, credentials=creds)
+
+    service.users().messages().batchDelete(
+        userId="me",
+        body={"ids": message_ids},
+    ).execute()
+
+
 # =========================
 # Google Calendar
 # =========================
