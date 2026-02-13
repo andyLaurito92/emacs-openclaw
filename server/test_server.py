@@ -293,7 +293,8 @@ class TestEmacsBufferRouting:
 
         # Check that all Emacs tools have correct prefix
         emacs_tools = [t for t in tools if t["provider"] == "emacs"]
-        assert len(emacs_tools) == 5  # list, create, get, set, delete
+        # 5 basic (list, create, get, set, delete) + 7 advanced (append, info, region get/set, replace, mode, eval) = 12
+        assert len(emacs_tools) == 12
 
         for tool in emacs_tools:
             assert tool["endpoint"].startswith("/emacs/")

@@ -323,6 +323,86 @@ def list_tools():
                     "buffer_name": "string (buffer name)",
                 },
             },
+            {
+                "provider": "emacs",
+                "name": "append_buffer_content",
+                "endpoint": "/emacs/buffer/{buffer_name}/append",
+                "method": "POST",
+                "description": "Append content to an Emacs buffer without replacing",
+                "parameters": {
+                    "buffer_name": "string (buffer name)",
+                    "content": "string (content to append)",
+                },
+            },
+            {
+                "provider": "emacs",
+                "name": "get_buffer_info",
+                "endpoint": "/emacs/buffer/{buffer_name}/info",
+                "method": "GET",
+                "description": "Get metadata about an Emacs buffer (lines, chars, modified, read_only, mode)",
+                "parameters": {
+                    "buffer_name": "string (buffer name)",
+                },
+            },
+            {
+                "provider": "emacs",
+                "name": "get_buffer_region",
+                "endpoint": "/emacs/buffer/{buffer_name}/region",
+                "method": "GET",
+                "description": "Get a region of text from a buffer by character position range",
+                "parameters": {
+                    "buffer_name": "string (buffer name)",
+                    "start": "integer (0-indexed start position)",
+                    "end": "integer (0-indexed end position, exclusive)",
+                },
+            },
+            {
+                "provider": "emacs",
+                "name": "set_buffer_region",
+                "endpoint": "/emacs/buffer/{buffer_name}/region",
+                "method": "PUT",
+                "description": "Replace a region of text in a buffer",
+                "parameters": {
+                    "buffer_name": "string (buffer name)",
+                    "start": "integer (0-indexed start position)",
+                    "end": "integer (0-indexed end position, exclusive)",
+                    "content": "string (new content for the region)",
+                },
+            },
+            {
+                "provider": "emacs",
+                "name": "buffer_replace",
+                "endpoint": "/emacs/buffer/{buffer_name}/replace",
+                "method": "POST",
+                "description": "Search and replace text in a buffer (single or all occurrences)",
+                "parameters": {
+                    "buffer_name": "string (buffer name)",
+                    "find": "string (text to find)",
+                    "replace": "string (replacement text)",
+                    "all": "boolean (replace all occurrences if true, else first only)",
+                },
+            },
+            {
+                "provider": "emacs",
+                "name": "set_buffer_mode",
+                "endpoint": "/emacs/buffer/{buffer_name}/mode",
+                "method": "POST",
+                "description": "Set the major mode of a buffer (changes syntax highlighting and behavior)",
+                "parameters": {
+                    "buffer_name": "string (buffer name)",
+                    "mode": "string (mode name, e.g., 'text-mode', 'org-mode', 'markdown-mode')",
+                },
+            },
+            {
+                "provider": "emacs",
+                "name": "eval_elisp",
+                "endpoint": "/emacs/eval",
+                "method": "POST",
+                "description": "Evaluate arbitrary Emacs Lisp code",
+                "parameters": {
+                    "code": "string (Emacs Lisp expression)",
+                },
+            },
         ],
     }
 

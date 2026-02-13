@@ -118,7 +118,8 @@ def test_tools_endpoint():
     
     # Count emacs tools
     emacs_tools = [t for t in data["tools"] if t["provider"] == "emacs"]
-    assert len(emacs_tools) == 5, f"Expected 5 emacs tools, got {len(emacs_tools)}"
+    # 5 basic (list, create, get, set, delete) + 7 advanced (append, info, region get/set, replace, mode, eval) = 12
+    assert len(emacs_tools) == 12, f"Expected 12 emacs tools, got {len(emacs_tools)}"
     print(f"✓ Found {len(emacs_tools)} Emacs tools in /tools endpoint")
 
 
