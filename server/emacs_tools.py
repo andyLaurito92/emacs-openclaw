@@ -393,6 +393,33 @@ def emacs_buffer_replace(buffer_name: str, find: str, replace: str, all_occurren
         raise
 
 
+def emacs_set_buffer_mode(buffer_name: str, mode: str) -> str:
+    """
+    Set the major mode of a buffer.
+    
+    Args:
+        buffer_name: Name of the buffer
+        mode: Mode name (e.g., "text-mode", "markdown-mode", "org-mode")
+        
+    Returns:
+        The new mode name
+        
+    Raises:
+        RuntimeError: If emacsclient fails or buffer doesn't exist
+    """
+    try:
+        escaped_name = _escape_elisp_string(buffer_name)
+        # Convert mode string to symbol if needed
+        mode_symbol = mode if mode.endswith('-mode') else f"{mode}-mode"
+        
+        # Set the mode and return the new mode name
+        output = _emacsclient_eval(f'(with-current-buffer "{escaped_name}" (funcall (intern "{mode_symbol}")) (symbol-name major-mode))')
+        return _parse_elisp_string(output)
+    except Exception as e:
+        logger.error(f"Error setting buffer mode '{buffer_name}' to '{mode}': {e}")
+        raise
+
+
 def emacs_eval_elisp(code: str) -> str:
     """
     Evaluate arbitrary Emacs Lisp code.

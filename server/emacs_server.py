@@ -19,6 +19,7 @@ from emacs_tools import (
     emacs_get_buffer_region,
     emacs_set_buffer_region,
     emacs_buffer_replace,
+    emacs_set_buffer_mode,
     emacs_eval_elisp,
 )
 
@@ -57,6 +58,10 @@ class BufferReplaceRequest(BaseModel):
     find: str
     replace: str
     all: bool = False
+
+
+class SetBufferModeRequest(BaseModel):
+    mode: str
 
 
 class EvalElispRequest(BaseModel):
@@ -331,6 +336,28 @@ def buffer_replace_endpoint(buffer_name: str, payload: BufferReplaceRequest):
         return {"status": "replaced", "buffer_name": buffer_name, "count": 0}
     except Exception as e:
         logger.error(f"Error replacing in buffer: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/buffer/{buffer_name}/mode")
+def set_buffer_mode_endpoint(buffer_name: str, payload: SetBufferModeRequest):
+    """
+    Set the major mode of a buffer.
+    
+    Args:
+        buffer_name: Name of the buffer
+        payload: Request with mode name (e.g., "text-mode", "markdown-mode", "org-mode")
+        
+    Returns:
+        Success status and new mode name
+    """
+    try:
+        logger.info(f"Setting buffer mode: {buffer_name} -> {payload.mode}")
+        new_mode = emacs_set_buffer_mode(buffer_name, payload.mode)
+        logger.info(f"Buffer mode changed to: {new_mode}")
+        return {"status": "mode_changed", "buffer_name": buffer_name, "mode": new_mode}
+    except Exception as e:
+        logger.error(f"Error setting buffer mode: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
