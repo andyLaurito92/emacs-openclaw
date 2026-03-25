@@ -16,12 +16,13 @@
      -H "Content-Type: application/json" \
      -d '{"code": "(with-temp-buffer (insert-file-contents \"path/to/file.el\") (condition-case err (progn (check-parens) \"ok\") (error (format \"%s\" err))))"}'
    ```
-4. **Open a PR targeting `main`** and request GitHub Copilot as reviewer:
+4. **Open a PR targeting `main`**:
    ```bash
    gh pr create --base main ...
    ```
-   Then add Copilot as reviewer via the GitHub web UI (PR page → Reviewers → search "Copilot"), or enable auto-review in *repo Settings → Code review → Copilot*.
-   The `--reviewer copilot` CLI flag does not work reliably — use the web UI.
+   Then **request a Copilot review** from the PR page → Reviewers → select "Copilot".
+   Copilot is a GitHub App, not a user — it cannot be added via `--reviewer` flag or the REST API.
+   It must be enabled first in *repo Settings → Code review → Copilot code review*.
 5. Do not push directly to `main`.
 
 ## Project Overview
