@@ -61,6 +61,16 @@ If nil, will be auto-detected from the main session key provided by the gateway.
   :type 'boolean
   :group 'emacs-openclaw)
 
+(defcustom emacs-openclaw-inject-buffer-context t
+  "Whether to automatically inject current buffer context into each message.
+When non-nil, a compact context block is prepended to the text sent to
+the OpenClaw gateway (but NOT shown in the chat buffer).  This saves
+the agent a round-trip tool call to discover what you are working on.
+The context includes: current buffer name, file path, major mode, and
+cursor line number."
+  :type 'boolean
+  :group 'emacs-openclaw)
+
 (defcustom emacs-openclaw-python-executable "python3"
   "Python executable used to start the OpenClaw server.
 Defaults to \"python3\" (whatever is on your PATH), but you should set this

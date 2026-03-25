@@ -78,6 +78,29 @@
 ;; Chat Request Handling
 ;; ============================================================================
 
+(defun emacs-openclaw--build-context-prefix ()
+  "Return a context string describing the user's current Emacs state.
+Returns nil if context injection is disabled or context is unavailable."
+  (when emacs-openclaw-inject-buffer-context
+    (condition-case nil
+        (let* ((prev-buf (other-buffer (get-buffer emacs-openclaw-buffer-name) t))
+               (buf-name (when (and prev-buf (buffer-live-p prev-buf))
+                           (buffer-name prev-buf)))
+               (file-path (when prev-buf
+                            (buffer-local-value 'buffer-file-name prev-buf)))
+               (mode (when prev-buf
+                       (symbol-name (buffer-local-value 'major-mode prev-buf))))
+               (line (when prev-buf
+                       (with-current-buffer prev-buf
+                         (line-number-at-pos)))))
+          (when buf-name
+            (format "[Context: buffer=%s%s, mode=%s, line=%s]\n"
+                    buf-name
+                    (if file-path (format " (%s)" file-path) "")
+                    (or mode "unknown")
+                    (or line "?"))))
+      (error nil))))
+
 (defun emacs-openclaw--send-request (prompt)
   "Send PROMPT to OpenClaw via websocket and log the response."
   (emacs-openclaw--log "\n" nil)
@@ -88,36 +111,37 @@
   (emacs-openclaw--log "\n" nil)
   (emacs-openclaw--log "OpenClaw: " 'emacs-openclaw-response-face)
   (emacs-openclaw--log "\n" nil)  ; Start response on new line
-  
-  (emacs-openclaw--websocket-send-chat 
-   prompt
-   (lambda (response)
-     (let ((ok (alist-get 'ok response))
-           (msg-id (alist-get 'id response))
-           (response-text nil))
-       (if ok
-           (progn
-             ;; Only extract from res if no agent events were received
-             ;; (agent events already streamed and displayed the response)
-             (unless (gethash msg-id emacs-openclaw--active-requests)
-               (let* ((payload (alist-get 'payload response))
-                      (result (alist-get 'result payload))
-                      (payloads (alist-get 'payloads result))
-                      (first-payload (when (listp payloads) (car payloads))))
-                 (setq response-text (when first-payload (alist-get 'text first-payload)))
-                 (when response-text
-                   (emacs-openclaw--log response-text nil)
-                   (emacs-openclaw--log "\n" nil)
-                   (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow)
-                   (emacs-openclaw--log "\n" nil))))
-             ;; Clean up tracking
-             (remhash msg-id emacs-openclaw--active-requests)
-             ;; Speak the response if TTS is enabled
-             (when response-text
-               (emacs-openclaw-tts-speak-response response-text)))
-         (let ((error-data (alist-get 'error response)))
-           (emacs-openclaw--log (format "\n[Error]: %s\n" error-data) 'error)
-           (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow)))))))
+
+  (let ((payload (concat (or (emacs-openclaw--build-context-prefix) "") prompt)))
+    (emacs-openclaw--websocket-send-chat
+     payload
+     (lambda (response)
+       (let ((ok (alist-get 'ok response))
+             (msg-id (alist-get 'id response))
+             (response-text nil))
+         (if ok
+             (progn
+               ;; Only extract from res if no agent events were received
+               ;; (agent events already streamed and displayed the response)
+               (unless (gethash msg-id emacs-openclaw--active-requests)
+                 (let* ((payload (alist-get 'payload response))
+                        (result (alist-get 'result payload))
+                        (payloads (alist-get 'payloads result))
+                        (first-payload (when (listp payloads) (car payloads))))
+                   (setq response-text (when first-payload (alist-get 'text first-payload)))
+                   (when response-text
+                     (emacs-openclaw--log response-text nil)
+                     (emacs-openclaw--log "\n" nil)
+                     (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow)
+                     (emacs-openclaw--log "\n" nil))))
+               ;; Clean up tracking
+               (remhash msg-id emacs-openclaw--active-requests)
+               ;; Speak the response if TTS is enabled
+               (when response-text
+                 (emacs-openclaw-tts-speak-response response-text)))
+           (let ((error-data (alist-get 'error response)))
+             (emacs-openclaw--log (format "\n[Error]: %s\n" error-data) 'error)
+             (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow))))))))
 
 ;; ============================================================================
 ;; Interactive Commands
