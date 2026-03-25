@@ -61,6 +61,17 @@ If nil, will be auto-detected from the main session key provided by the gateway.
   :type 'boolean
   :group 'emacs-openclaw)
 
+(defcustom emacs-openclaw-python-executable "python3"
+  "Python executable used to start the OpenClaw server.
+Defaults to \"python3\" (whatever is on your PATH), but you should set this
+to the Python that has the server dependencies (uvicorn, fastapi, etc.)
+installed.  Common values:
+  - A virtualenv:  \"/path/to/repo/server/venv/bin/python3\"
+  - A conda env:   \"/opt/homebrew/anaconda3/envs/myenv/bin/python3\"
+  - A specific version: \"/opt/homebrew/opt/python@3.14/bin/python3.14\""
+  :type 'string
+  :group 'emacs-openclaw)
+
 (defcustom emacs-openclaw-websocket-timeout 10
   "Timeout in seconds for establishing WebSocket connection to OpenClaw gateway."
   :type 'integer

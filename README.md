@@ -314,6 +314,25 @@ Enable audio playback of OpenClaw responses using your system's default text-to-
 
 **Note:** Text-to-speech is disabled by default. No additional dependencies are required on macOS (uses built-in `say` command). On Linux, install `espeak` via your package manager.
 
+### Python Executable
+
+The server is launched using the Python executable configured via `emacs-openclaw-python-executable` (defaults to `"python3"`). You must point this to a Python that has the server dependencies installed (`uvicorn`, `fastapi`, etc.):
+
+```elisp
+;; If you use the project's virtualenv (recommended):
+(setq emacs-openclaw-python-executable "/path/to/emacs-openclaw/server/venv/bin/python3")
+
+;; If you use a conda environment:
+(setq emacs-openclaw-python-executable "/opt/homebrew/anaconda3/envs/myenv/bin/python3")
+```
+
+To set up the virtualenv from scratch:
+```bash
+cd server/
+python3 -m venv venv
+venv/bin/pip install -r requirements.txt
+```
+
 ### Server Port
 
 The Gmail/Calendar tools server runs on port 3333 by default. You can customize this in Emacs:

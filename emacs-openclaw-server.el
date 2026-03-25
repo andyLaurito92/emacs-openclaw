@@ -67,12 +67,12 @@
       (unless server-dir
         (error "Cannot find server directory. Please ensure emacs-openclaw is installed correctly"))
       
-      (unless (executable-find "python3")
-        (error "python3 not found. Please install Python 3"))
-      
+      (unless (executable-find emacs-openclaw-python-executable)
+        (error "Python executable not found: %s. Please set `emacs-openclaw-python-executable'" emacs-openclaw-python-executable))
+
       (unless (file-exists-p emacs-openclaw-client-secret-path)
         (error "client_secret.json not found! Please place it in: %s" emacs-openclaw-client-secret-path))
-      
+
       (let ((default-directory server-dir)
             (process-environment (cons (format "OPENCLAW_CLIENT_SECRET=%s" emacs-openclaw-client-secret-path)
                                        process-environment)))
@@ -80,7 +80,7 @@
               (start-process
                "openclaw-server"
                (get-buffer-create emacs-openclaw--server-buffer)
-               "python3" "-m" "uvicorn" "server:app"
+               emacs-openclaw-python-executable "-m" "uvicorn" "server:app"
                "--host" "127.0.0.1"
                "--port" (number-to-string emacs-openclaw-server-port)))
         
