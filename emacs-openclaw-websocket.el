@@ -104,7 +104,7 @@
               (when (> (length emacs-openclaw--current-message-buffer) 0)
                 (emacs-openclaw-tts-speak-response emacs-openclaw--current-message-buffer))
               ;; Clear buffer for next response
-              (setq emacs-openclaw--current-message-buffer "")))))))))))
+              (setq emacs-openclaw--current-message-buffer ""))))))))))
 ;; ----------------------------------------------------------------------------
 ;; Message handling
 ;; ----------------------------------------------------------------------------
