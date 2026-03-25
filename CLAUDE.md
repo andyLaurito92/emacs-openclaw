@@ -4,15 +4,13 @@
 
 1. **Create a branch** named `feature/<feature-name>` (e.g. `feature/show-tool-activity`).
 2. Make iterative, focused commits on the branch as work progresses.
-3. **Verify CI locally before opening a PR.** Run the same checks the CI runs:
+3. **Verify CI locally before opening a PR.** Run `check-parens` on every `.el` file you touched:
    ```bash
-   # Paren check — catches unbalanced parens in any .el file you touched
-   awk 'BEGIN{d=0}{for(i=1;i<=length($0);i++){c=substr($0,i,1);if(c=="(")d++;else if(c==")"){d--;if(d<0){print "Extra ) line "NR" col "i;d=0}}}}END{if(d!=0)print "Unmatched opens: "d}' <file>.el
-
-   # Byte-compile (requires Emacs with deps installed)
-   emacs -Q --batch -L . --eval "(package-initialize)" -f batch-byte-compile emacs-openclaw.el
+   /Applications/Emacs.app/Contents/MacOS/Emacs --batch \
+     --eval "(progn (find-file \"<file>.el\") (check-parens) (message \"✓ Parentheses balanced\"))"
    ```
-   Alternatively, use the running Emacs server via the `/emacs/eval` endpoint:
+   Note: the bare `emacs` on PATH has a stale symlink — use the full path above.
+   If the Emacs server is running, you can also use the `/emacs/eval` endpoint:
    ```bash
    curl -s -X POST http://localhost:3333/emacs/eval \
      -H "Content-Type: application/json" \
