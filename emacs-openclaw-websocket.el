@@ -57,7 +57,15 @@
           (when (> (length emacs-openclaw--current-message-buffer) 0)
             (emacs-openclaw-tts-speak-response emacs-openclaw--current-message-buffer))
           ;; Clear buffer for next response
-          (setq emacs-openclaw--current-message-buffer "")))))))
+          (setq emacs-openclaw--current-message-buffer ""))
+
+         (t
+          ;; Unknown stream type — log to server buffer for debugging
+          (let ((server-buf (get-buffer-create "*OpenClaw-Server*")))
+            (with-current-buffer server-buf
+              (goto-char (point-max))
+              (insert (format "[emacs-openclaw debug] Unknown stream type: %S data: %S\n"
+                              stream data))))))))))
 ;; ----------------------------------------------------------------------------
 ;; Message handling
 ;; ----------------------------------------------------------------------------
