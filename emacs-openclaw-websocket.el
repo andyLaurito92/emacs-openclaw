@@ -15,6 +15,9 @@
 
 (defvar emacs-openclaw--connect-nonce nil)
 
+(defvar emacs-openclaw--thinking-marker nil
+  "Buffer position marker for the \\='Thinking…\\=' indicator, or nil if not shown.")
+
 (defun emacs-openclaw--ensure-session-key ()
   (unless emacs-openclaw--session-key
     (setq emacs-openclaw--session-key
@@ -24,6 +27,43 @@
 (defun emacs-openclaw--generate-request-id ()
   (setq emacs-openclaw--request-id-counter (1+ emacs-openclaw--request-id-counter))
   (format "emacs-req-%d" emacs-openclaw--request-id-counter))
+
+;; ============================================================================
+;; Thinking Indicator
+;; ============================================================================
+
+(declare-function emacs-openclaw--log "emacs-openclaw-chat")
+
+(defface emacs-openclaw-thinking-face
+  '((t :foreground "gray50" :slant italic))
+  "Face for the \\='Thinking…\\=' indicator in OpenClaw chat."
+  :group 'emacs-openclaw)
+
+(defun emacs-openclaw--show-thinking ()
+  "Insert a \\='Thinking…\\=' indicator in the chat buffer and record its position."
+  (when-let ((buf (get-buffer "*OpenClaw-Chat*")))
+    (with-current-buffer buf
+      (let ((inhibit-read-only t))
+        (save-excursion
+          (goto-char (point-max))
+          (let ((start (point)))
+            (insert (propertize "  Thinking…\n" 'face 'emacs-openclaw-thinking-face))
+            (setq emacs-openclaw--thinking-marker (copy-marker start))))
+        (when-let ((win (get-buffer-window buf)))
+          (set-window-point win (point-max)))))))
+
+(defun emacs-openclaw--clear-thinking ()
+  "Remove the \\='Thinking…\\=' indicator from the chat buffer."
+  (when emacs-openclaw--thinking-marker
+    (when-let ((buf (marker-buffer emacs-openclaw--thinking-marker)))
+      (with-current-buffer buf
+        (let ((inhibit-read-only t))
+          (delete-region emacs-openclaw--thinking-marker
+                         (save-excursion
+                           (goto-char emacs-openclaw--thinking-marker)
+                           (line-end-position 2))))))
+    (set-marker emacs-openclaw--thinking-marker nil)
+    (setq emacs-openclaw--thinking-marker nil)))
 
 ;; ============================================================================
 ;; Agent Event Handling
@@ -43,21 +83,28 @@
             (data (alist-get 'data payload)))
         (cond
          ((string= stream "assistant")
+          (emacs-openclaw--clear-thinking)
           (when-let ((delta (alist-get 'delta data)))
             (setq emacs-openclaw--current-message-buffer
                   (concat emacs-openclaw--current-message-buffer delta))
             (emacs-openclaw--log delta nil)))
 
-         ((and (string= stream "lifecycle")
-               (string= (alist-get 'phase data) "end"))
-          (emacs-openclaw--log "\n" nil)
-          (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow)
-          (emacs-openclaw--log "\n" nil)
-          ;; Speak the complete response if TTS is enabled
-          (when (> (length emacs-openclaw--current-message-buffer) 0)
-            (emacs-openclaw-tts-speak-response emacs-openclaw--current-message-buffer))
-          ;; Clear buffer for next response
-          (setq emacs-openclaw--current-message-buffer "")))))))
+         ((string= stream "lifecycle")
+          (let ((phase (alist-get 'phase data)))
+            (cond
+             ((string= phase "start")
+              (when emacs-openclaw-show-thinking-indicator
+                (emacs-openclaw--show-thinking)))
+             ((string= phase "end")
+              (emacs-openclaw--clear-thinking)
+              (emacs-openclaw--log "\n" nil)
+              (emacs-openclaw--log (concat emacs-openclaw-message-separator "\n") 'shadow)
+              (emacs-openclaw--log "\n" nil)
+              ;; Speak the complete response if TTS is enabled
+              (when (> (length emacs-openclaw--current-message-buffer) 0)
+                (emacs-openclaw-tts-speak-response emacs-openclaw--current-message-buffer))
+              ;; Clear buffer for next response
+              (setq emacs-openclaw--current-message-buffer "")))))))))))
 ;; ----------------------------------------------------------------------------
 ;; Message handling
 ;; ----------------------------------------------------------------------------

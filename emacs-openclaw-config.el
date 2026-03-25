@@ -61,6 +61,14 @@ If nil, will be auto-detected from the main session key provided by the gateway.
   :type 'boolean
   :group 'emacs-openclaw)
 
+(defcustom emacs-openclaw-show-thinking-indicator t
+  "Whether to show a \\='Thinking…\\=' indicator while the agent is processing.
+When non-nil, a dimmed \\='Thinking…\\=' line is inserted after the user sends
+a message and before the agent response arrives.  It is automatically
+cleared when the first response text streams in."
+  :type 'boolean
+  :group 'emacs-openclaw)
+
 (defcustom emacs-openclaw-python-executable "python3"
   "Python executable used to start the OpenClaw server.
 Defaults to \"python3\" (whatever is on your PATH), but you should set this
