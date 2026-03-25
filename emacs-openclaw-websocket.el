@@ -6,6 +6,8 @@
 (require 'emacs-openclaw-config)
 (require 'emacs-openclaw-tts)
 
+(declare-function emacs-openclaw--log "emacs-openclaw-chat")
+
 (defvar emacs-openclaw--websocket nil)
 (defvar emacs-openclaw--websocket-connected nil)
 (defvar emacs-openclaw--request-id-counter 0)
@@ -24,6 +26,29 @@
 (defun emacs-openclaw--generate-request-id ()
   (setq emacs-openclaw--request-id-counter (1+ emacs-openclaw--request-id-counter))
   (format "emacs-req-%d" emacs-openclaw--request-id-counter))
+
+;; ============================================================================
+;; Tool Activity Faces and Helpers
+;; ============================================================================
+
+(defface emacs-openclaw-tool-face
+  '((t :foreground "dark orange" :weight normal :slant italic))
+  "Face for tool call/result lines in OpenClaw chat."
+  :group 'emacs-openclaw)
+
+(defun emacs-openclaw--log-tool-call (name args)
+  "Log a tool invocation to the chat buffer when tool activity display is enabled."
+  (when emacs-openclaw-show-tool-activity
+    (emacs-openclaw--log
+     (format "  ⚙ [tool] %s %s\n" name (or args ""))
+     'emacs-openclaw-tool-face)))
+
+(defun emacs-openclaw--log-tool-result (name result)
+  "Log a tool result to the chat buffer when tool activity display is enabled."
+  (when emacs-openclaw-show-tool-activity
+    (emacs-openclaw--log
+     (format "  ← [result] %s\n" (or result ""))
+     'shadow)))
 
 ;; ============================================================================
 ;; Agent Event Handling
@@ -47,6 +72,16 @@
             (setq emacs-openclaw--current-message-buffer
                   (concat emacs-openclaw--current-message-buffer delta))
             (emacs-openclaw--log delta nil)))
+
+         ((string= stream "tool_call")
+          (let ((name (or (alist-get 'name data) "unknown"))
+                (args (alist-get 'arguments data)))
+            (emacs-openclaw--log-tool-call name args)))
+
+         ((string= stream "tool_result")
+          (let ((name (or (alist-get 'name data) "unknown"))
+                (result (alist-get 'result data)))
+            (emacs-openclaw--log-tool-result name result)))
 
          ((and (string= stream "lifecycle")
                (string= (alist-get 'phase data) "end"))

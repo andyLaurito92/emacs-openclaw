@@ -61,6 +61,14 @@ If nil, will be auto-detected from the main session key provided by the gateway.
   :type 'boolean
   :group 'emacs-openclaw)
 
+(defcustom emacs-openclaw-show-tool-activity t
+  "Whether to show tool call and result events in the chat buffer.
+When non-nil, tool invocations and their results are displayed in a
+dimmed style so you can see what the agent is doing.  Set to nil for
+a cleaner chat that only shows assistant text."
+  :type 'boolean
+  :group 'emacs-openclaw)
+
 (defcustom emacs-openclaw-python-executable "python3"
   "Python executable used to start the OpenClaw server.
 Defaults to \"python3\" (whatever is on your PATH), but you should set this
