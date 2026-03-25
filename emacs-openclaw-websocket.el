@@ -65,7 +65,7 @@
             (with-current-buffer server-buf
               (goto-char (point-max))
               (insert (format "[emacs-openclaw debug] Unknown stream type: %S data: %S\n"
-                              stream data)))))))))))
+                              stream data))))))))))
 ;; ----------------------------------------------------------------------------
 ;; Message handling
 ;; ----------------------------------------------------------------------------
