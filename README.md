@@ -221,6 +221,17 @@ The package includes a tool discovery mechanism that allows OpenClaw to know abo
 (setq emacs-openclaw-auto-start-server t)  ; Auto-start server (default: t)
 ```
 
+### Thinking Indicator
+
+While the agent is processing your message, a dimmed `Thinking…` line is shown
+in the chat buffer and automatically removed when the first response text
+arrives.  This is enabled by default; set it to `nil` to disable it:
+
+```elisp
+;; Disable the "Thinking…" indicator (default: t)
+(setq emacs-openclaw-show-thinking-indicator nil)
+```
+
 ### Customizing Chat Appearance
 
 You can customize the colors used in the chat buffer:
