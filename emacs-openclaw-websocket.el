@@ -61,7 +61,8 @@
           (delete-region emacs-openclaw--thinking-marker
                          (save-excursion
                            (goto-char emacs-openclaw--thinking-marker)
-                           (line-end-position 2))))))
+                           (forward-line 1)
+                           (point))))))
     (set-marker emacs-openclaw--thinking-marker nil)
     (setq emacs-openclaw--thinking-marker nil)))
 
