@@ -41,7 +41,10 @@
 
 (defun emacs-openclaw--show-thinking ()
   "Insert a \\='Thinking…\\=' indicator in the chat buffer and record its position."
-  (when-let ((buf (get-buffer "*OpenClaw-Chat*")))
+  (emacs-openclaw--clear-thinking)
+  (when-let ((buf (get-buffer (if (boundp 'emacs-openclaw-buffer-name)
+                                  emacs-openclaw-buffer-name
+                                "*OpenClaw-Chat*"))))
     (with-current-buffer buf
       (let ((inhibit-read-only t))
         (save-excursion
@@ -50,7 +53,7 @@
             (insert (propertize "  Thinking…\n" 'face 'emacs-openclaw-thinking-face))
             (setq emacs-openclaw--thinking-marker (copy-marker start))))
         (when-let ((win (get-buffer-window buf)))
-          (set-window-point win (point-max)))))))
+          (set-window-point win (point-max))))))
 
 (defun emacs-openclaw--clear-thinking ()
   "Remove the \\='Thinking…\\=' indicator from the chat buffer."
